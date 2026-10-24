@@ -54,10 +54,8 @@
             display: block;
         }
 
-        textarea {
+        textarea, input[type="file"] {
             width: 100%;
-            height: 100px;
-            padding: 10px;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 6px;
@@ -65,7 +63,17 @@
             box-sizing: border-box;
             font-size: 1rem;
             margin-bottom: 12px;
+        }
+
+        textarea {
+            height: 90px;
+            padding: 10px;
             resize: vertical;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            cursor: pointer;
         }
 
         button {
@@ -107,13 +115,20 @@
 <div class="container">
     <div class="card">
         <h1>Vedic Jyotish Engine</h1>
-        <div class="status">Gateway Mode: Cloudflare Worker Proxy Active</div>
+        <div id="memoryStatus" class="status">Chart Memory: No chart data stored in session yet.</div>
     </div>
 
     <div class="card">
-        <h2>Chart Analysis Query</h2>
-        <label for="prompt">Prompt Input (Scorpio Lagna, Bhava Madhya, Planetary Parameters)</label>
-        <textarea id="prompt" placeholder="Enter query or parameters for analysis..."></textarea>
+        <h2>1. Upload Planetary Chart Screenshot</h2>
+        <label for="chartScreenshot">Provide a screenshot of your chart/planetary degrees:</label>
+        <input type="file" id="chartScreenshot" accept="image/*">
+        <button id="extractBtn" onclick="extractChartData()">Extract & Store Chart Data</button>
+    </div>
+
+    <div class="card">
+        <h2>2. Chart Analysis Query</h2>
+        <label for="prompt">Prompt Input (Synthesizes using stored chart memory)</label>
+        <textarea id="prompt" placeholder="Enter query or specific transit/career/wealth focus..."></textarea>
         <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
     </div>
 
@@ -124,71 +139,135 @@
 </div>
 
 <script>
-    // Point directly to your Cloudflare Worker Backend URL
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
 
-    async function processQuery() {
-        const promptText = document.getElementById('prompt').value.trim();
-        const submitBtn = document.getElementById('submitBtn');
+    // Load stored chart context on startup if available
+    window.onload = function() {
+        const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
+        if (storedContext) {
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Planetary degrees stored in session)";
+        }
+    };
+
+    // Helper to convert uploaded image file to Base64
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function extractChartData() {
+        const fileInput = document.getElementById('chartScreenshot');
+        const extractBtn = document.getElementById('extractBtn');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
+        const memoryStatus = document.getElementById('memoryStatus');
 
-        if (!promptText) {
-            alert("Please provide input text or parameters for analysis.");
+        if (fileInput.files.length === 0) {
+            alert("Please select or upload a chart screenshot image first.");
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Connecting to Cloudflare Worker Gateway...";
+        const file = fileInput.files[0];
+        extractBtn.disabled = true;
+        extractBtn.textContent = "Analyzing Screenshot & Extracting Degrees...";
         resultCard.style.display = "block";
-        outputDiv.textContent = "Initiating serverless handshake...";
+        outputDiv.textContent = "Processing image through vision pipeline...";
 
         try {
+            const base64Image = await fileToBase64(file);
+
+            const extractionPrompt = "Analyze this Vedic Jyotish chart screenshot. Extract and list all exact planetary degrees, ascendant/Lagna position, house placements, and any relevant astrological details precisely. Format this clearly so it can serve as the foundational natal chart context for subsequent queries.";
+
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ prompt: promptText })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: extractionPrompt,
+                    image: {
+                        inlineData: {
+                            data: base64Image,
+                            mimeType: file.type
+                        }
+                    }
+                })
             });
 
-            // Safely handle Cloudflare 524 timeouts or server error pages without crashing on JSON parse
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Server Error (${response.status}): ${errorText}`);
             }
 
             const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Extraction completed.";
             
-            if (data.error) {
-                throw new Error(data.error);
+            // Store extracted chart context in browser session memory
+            sessionStorage.setItem('JYOTISH_CHART_CONTEXT', extractedText);
+            memoryStatus.textContent = "Chart Memory: Active (Planetary degrees stored in session)";
+            
+            outputDiv.textContent = "--- CHART DATA SUCCESSFULLY EXTRACTED & STORED IN MEMORY ---\n\n" + extractedText;
+
+        } catch (error) {
+            console.error("Extraction Failed:", error);
+            outputDiv.textContent = `Error extracting chart screenshot: ${error.message}`;
+        } finally {
+            extractBtn.disabled = false;
+            extractBtn.textContent = "Extract & Store Chart Data";
+        }
+    }
+
+    async function processQuery() {
+        const userPrompt = document.getElementById('prompt').value.trim();
+        const submitBtn = document.getElementById('submitBtn');
+        const outputDiv = document.getElementById('output');
+        const resultCard = document.getElementById('resultCard');
+
+        if (!userPrompt) {
+            alert("Please provide input query parameters for analysis.");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Synthesizing with Stored Chart Memory...";
+        resultCard.style.display = "block";
+        outputDiv.textContent = "Combining query with stored natal baseline...";
+
+        try {
+            // Retrieve stored chart context from session memory
+            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart screenshot uploaded. Proceed using standard framework rules.";
+
+            // Combine stored chart context with the user's active query prompt
+            const combinedPrompt = `[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: combinedPrompt })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
             }
 
-            // Extract response text safely from Gemini response payload
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
             const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data, null, 2);
             outputDiv.textContent = generatedText;
 
         } catch (error) {
             console.error("Gateway Call Failed:", error);
-
-            const fallbackNotice = `Network Notice: Cloud handshake restricted (${error.message}). Running 7-Rule Engine local synthesis fallback:\n\n`;
-            outputDiv.textContent = fallbackNotice + runSevenRuleEngine(promptText);
-
+            outputDiv.textContent = `Network Notice: Cloud handshake restricted (${error.message}).`;
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = "Run Synthesis";
         }
-    }
-
-    function runSevenRuleEngine(input) {
-        return `[7-RULE ENGINE LOCAL FALLBACK OUTPUT]
-1. Ascendant / Lagna Framework: Scorpio Lagna (8°14') structural analysis activated.
-2. House System: Bhava Madhya midpoint geometry applied.
-3. Planetary Placement Audit: Saturn in 1st, Exalted Mars in 3rd, Atmakaraka Mercury in 12th.
-4. Multi-Dasha Matrix: Vimshottari, Chara, and Yogini Dasha synchronization compiled.
-5. Transit Overlay: Dual Reference Frame active (Lagna & Chandra Lagna).
-6. Aspect Geometry: Parashari and Gandanta boundary checks calculated.
-7. Conclusion: Query synthesized locally. Input received: "${input}"`;
     }
 </script>
 
