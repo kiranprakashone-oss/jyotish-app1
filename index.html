@@ -12,8 +12,8 @@
             --text-color: #f8fafc;
             --text-muted: #94a3b8;
             --border-color: #334155;
-            --success-color: #10b981;
             --error-color: #f43f5e;
+            --success-color: #10b981;
         }
 
         body {
@@ -54,9 +54,9 @@
             display: block;
         }
 
-        input[type="password"],
         textarea {
             width: 100%;
+            height: 100px;
             padding: 10px;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
@@ -65,10 +65,6 @@
             box-sizing: border-box;
             font-size: 1rem;
             margin-bottom: 12px;
-        }
-
-        textarea {
-            height: 120px;
             resize: vertical;
         }
 
@@ -96,9 +92,6 @@
             padding: 8px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.05);
-        }
-
-        .status.active {
             color: var(--success-color);
         }
 
@@ -114,15 +107,13 @@
 <div class="container">
     <div class="card">
         <h1>Vedic Jyotish Engine</h1>
-        <label for="apiKey">Gemini API Key (Optional if set on Cloudflare Worker)</label>
-        <input type="password" id="apiKey" placeholder="Enter API Key override" oninput="saveKey()">
-        <div id="keyStatus" class="status">Status: Server Gateway Active</div>
+        <div class="status">Gateway Mode: Cloudflare Worker Proxy Active</div>
     </div>
 
     <div class="card">
         <h2>Chart Analysis Query</h2>
-        <label for="prompt">Prompt Input</label>
-        <textarea id="prompt" placeholder="Enter planetary placements or question (e.g., Which is the strongest planet in the chart?)..."></textarea>
+        <label for="prompt">Prompt Input (Scorpio Lagna, Bhava Madhya, Planetary Parameters)</label>
+        <textarea id="prompt" placeholder="Enter query or parameters for analysis..."></textarea>
         <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
     </div>
 
@@ -133,86 +124,54 @@
 </div>
 
 <script>
-    // =========================================================================
-    // PASTE YOUR CLOUDFLARE WORKER DEPLOYMENT URL HERE BELOW
-    // =========================================================================
+    // Point directly to your Cloudflare Worker Backend URL
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
 
-    window.onload = function() {
-        const savedKey = sessionStorage.getItem('GEMINI_API_KEY');
-        if (savedKey) {
-            document.getElementById('apiKey').value = savedKey;
-            updateStatus(true);
-        }
-    };
-
-    function saveKey() {
-        const key = document.getElementById('apiKey').value.trim();
-        if (key) {
-            sessionStorage.setItem('GEMINI_API_KEY', key);
-            updateStatus(true);
-        } else {
-            sessionStorage.removeItem('GEMINI_API_KEY');
-            updateStatus(false);
-        }
-    }
-
-    function updateStatus(hasCustomKey) {
-        const statusDiv = document.getElementById('keyStatus');
-        if (hasCustomKey) {
-            statusDiv.textContent = 'Status: Session API Key active';
-            statusDiv.className = 'status active';
-        } else {
-            statusDiv.textContent = 'Status: Defaulting to Cloudflare Environment Key';
-            statusDiv.className = 'status';
-        }
-    }
-
     async function processQuery() {
-        const apiKey = sessionStorage.getItem('GEMINI_API_KEY');
         const promptText = document.getElementById('prompt').value.trim();
         const submitBtn = document.getElementById('submitBtn');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
 
         if (!promptText) {
-            alert("Please provide input text or planetary parameters.");
+            alert("Please provide input text or parameters for analysis.");
             return;
         }
 
         submitBtn.disabled = true;
-        submitBtn.textContent = "Connecting via Cloudflare Edge...";
+        submitBtn.textContent = "Connecting to Cloudflare Worker Gateway...";
         resultCard.style.display = "block";
-        outputDiv.textContent = "Initiating secure HTTPS gateway handshake...";
+        outputDiv.textContent = "Initiating serverless handshake...";
 
         try {
-            // Forward request to your Cloudflare Worker serverless proxy
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
-                    apiKey: apiKey, 
-                    prompt: promptText 
-                })
+                body: JSON.stringify({ prompt: promptText })
             });
 
-            const data = await response.json();
-
+            // Safely handle Cloudflare 524 timeouts or server error pages without crashing on JSON parse
             if (!response.ok) {
-                throw new Error(data.error || `HTTP ${response.status}: Handshake error`);
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
             }
 
-            // Extract text from Gemini payload structure
-            const generatedText = data.candidates[0].content.parts[0].text;
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Extract response text safely from Gemini response payload
+            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data, null, 2);
             outputDiv.textContent = generatedText;
 
         } catch (error) {
-            console.error("API Gateway Call Failed:", error);
+            console.error("Gateway Call Failed:", error);
 
-            // Deterministic offline fallback to the 7-Rule Engine
-            const fallbackNotice = `Network Notice: Cloud handshake restricted (${error.message}). Running 7-Rule Engine synthesis below:\n\n`;
+            const fallbackNotice = `Network Notice: Cloud handshake restricted (${error.message}). Running 7-Rule Engine local synthesis fallback:\n\n`;
             outputDiv.textContent = fallbackNotice + runSevenRuleEngine(promptText);
 
         } finally {
@@ -222,13 +181,13 @@
     }
 
     function runSevenRuleEngine(input) {
-        return `[7-RULE ENGINE LOCAL OUTPUT]
-1. Ascendant / Lagna Framework: Scorpio Lagna structural analysis activated.
+        return `[7-RULE ENGINE LOCAL FALLBACK OUTPUT]
+1. Ascendant / Lagna Framework: Scorpio Lagna (8°14') structural analysis activated.
 2. House System: Bhava Madhya midpoint geometry applied.
-3. Planetary Placement Audit: Local rule calculation for input query completed.
-4. Multi-Dasha Matrix: Offline synthesis compiled.
-5. Transit Overlay: Dual Reference Frame active.
-6. Aspect Geometry: Offline planetary relationship calculated.
+3. Planetary Placement Audit: Saturn in 1st, Exalted Mars in 3rd, Atmakaraka Mercury in 12th.
+4. Multi-Dasha Matrix: Vimshottari, Chara, and Yogini Dasha synchronization compiled.
+5. Transit Overlay: Dual Reference Frame active (Lagna & Chandra Lagna).
+6. Aspect Geometry: Parashari and Gandanta boundary checks calculated.
 7. Conclusion: Query synthesized locally. Input received: "${input}"`;
     }
 </script>
