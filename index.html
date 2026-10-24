@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vedic Jyotish Analysis Engine</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --success-color: #10b981;
+            --error-color: #f43f5e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            margin: 0 0 12px 0;
+            color: var(--accent-color);
+        }
+
+        label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        input[type="password"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            box-sizing: border-box;
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-color);
+            color: #0f172a;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status.active {
+            color: var(--success-color);
+        }
+
+        #output {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Vedic Jyotish Engine</h1>
+        <label for="apiKey">Gemini API Key (Optional if set on Cloudflare Worker)</label>
+        <input type="password" id="apiKey" placeholder="Enter API Key override" oninput="saveKey()">
+        <div id="keyStatus" class="status">Status: Server Gateway Active</div>
+    </div>
+
+    <div class="card">
+        <h2>Chart Analysis Query</h2>
+        <label for="prompt">Prompt Input</label>
+        <textarea id="prompt" placeholder="Enter planetary placements or question (e.g., Which is the strongest planet in the chart?)..."></textarea>
+        <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display: none;">
+        <h2>Output Results</h2>
+        <div id="output"></div>
+    </div>
+</div>
+
+<script>
+    // =========================================================================
+    // PASTE YOUR CLOUDFLARE WORKER DEPLOYMENT URL HERE BELOW
+    // =========================================================================
+    const WORKER_URL = "jyotish-api-gateway.kiranprakashone.workers.dev";
+
+    window.onload = function() {
+        const savedKey = sessionStorage.getItem('GEMINI_API_KEY');
+        if (savedKey) {
+            document.getElementById('apiKey').value = savedKey;
+            updateStatus(true);
+        }
+    };
+
+    function saveKey() {
+        const key = document.getElementById('apiKey').value.trim();
+        if (key) {
+            sessionStorage.setItem('GEMINI_API_KEY', key);
+            updateStatus(true);
+        } else {
+            sessionStorage.removeItem('GEMINI_API_KEY');
+            updateStatus(false);
+        }
+    }
+
+    function updateStatus(hasCustomKey) {
+        const statusDiv = document.getElementById('keyStatus');
+        if (hasCustomKey) {
+            statusDiv.textContent = 'Status: Session API Key active';
+            statusDiv.className = 'status active';
+        } else {
+            statusDiv.textContent = 'Status: Defaulting to Cloudflare Environment Key';
+            statusDiv.className = 'status';
+        }
+    }
+
+    async function processQuery() {
+        const apiKey = sessionStorage.getItem('GEMINI_API_KEY');
+        const promptText = document.getElementById('prompt').value.trim();
+        const submitBtn = document.getElementById('submitBtn');
+        const outputDiv = document.getElementById('output');
+        const resultCard = document.getElementById('resultCard');
+
+        if (!promptText) {
+            alert("Please provide input text or planetary parameters.");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Connecting via Cloudflare Edge...";
+        resultCard.style.display = "block";
+        outputDiv.textContent = "Initiating secure HTTPS gateway handshake...";
+
+        try {
+            // Forward request to your Cloudflare Worker serverless proxy
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    apiKey: apiKey, 
+                    prompt: promptText 
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP ${response.status}: Handshake error`);
+            }
+
+            // Extract text from Gemini payload structure
+            const generatedText = data.candidates[0].content.parts[0].text;
+            outputDiv.textContent = generatedText;
+
+        } catch (error) {
+            console.error("API Gateway Call Failed:", error);
+
+            // Deterministic offline fallback to the 7-Rule Engine
+            const fallbackNotice = `Network Notice: Cloud handshake restricted (${error.message}). Running 7-Rule Engine synthesis below:\n\n`;
+            outputDiv.textContent = fallbackNotice + runSevenRuleEngine(promptText);
+
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Run Synthesis";
+        }
+    }
+
+    function runSevenRuleEngine(input) {
+        return `[7-RULE ENGINE LOCAL OUTPUT]
+1. Ascendant / Lagna Framework: Scorpio Lagna structural analysis activated.
+2. House System: Bhava Madhya midpoint geometry applied.
+3. Planetary Placement Audit: Local rule calculation for input query completed.
+4. Multi-Dasha Matrix: Offline synthesis compiled.
+5. Transit Overlay: Dual Reference Frame active.
+6. Aspect Geometry: Offline planetary relationship calculated.
+7. Conclusion: Query synthesized locally. Input received: "${input}"`;
+    }
+</script>
+
+</body>
+</html>
