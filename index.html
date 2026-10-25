@@ -275,12 +275,17 @@
             return;
         }
 
+        // Save to session storage
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', chartData);
+        
+        // Update Status Banner UI
         memoryStatus.textContent = "Chart Memory: Active (Planetary baseline stored in session)";
         
+        // Hide step inspector & token badge for save confirmation view, show result container
         inspector.style.display = "none";
         tokenBadge.style.display = "none";
         resultCard.style.display = "block";
+        
         outputDiv.className = "";
         outputDiv.textContent = "--- CHART BASELINE SUCCESSFULLY SAVED TO SESSION MEMORY ---\n\n" + chartData;
     }
@@ -339,7 +344,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
             await new Promise(r => setTimeout(r, 150));
 
-            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT'] || "No prior chart baseline entered.";
+            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
             step1.textContent = "Step 1/4: Natal chart baseline successfully loaded.";
 
@@ -421,7 +426,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
                 }
             }
 
-            // Calculate Token Metrics (Standard LLM rule: ~4 chars per token)
+            // Calculate Token Metrics (~4 chars per token rule)
             const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
             const outputTokenCount = Math.ceil(fullResponseText.length / 4);
             const totalTokenCount = inputTokenCount + outputTokenCount;
