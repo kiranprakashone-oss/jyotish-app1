@@ -78,7 +78,7 @@
             font-weight: 500;
         }
 
-        select, textarea {
+        textarea {
             width: 100%;
             background-color: rgba(11, 15, 25, 0.7);
             border: 1px solid var(--border-color);
@@ -88,16 +88,12 @@
             font-size: 0.95rem;
             margin-bottom: 14px;
             padding: 12px;
+            resize: vertical;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        select option {
-            background-color: var(--card-bg);
-            color: var(--text-main);
-        }
-
-        select:focus, textarea:focus {
+        textarea:focus {
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
@@ -150,6 +146,7 @@
             font-weight: 500;
         }
 
+        /* Progress Steps Inspector */
         .progress-inspector {
             background-color: var(--step-bg);
             border: 1px dashed var(--accent-primary);
@@ -159,7 +156,6 @@
             font-family: monospace;
             font-size: 0.82rem;
             color: var(--accent-light);
-            display: none;
         }
 
         .progress-step {
@@ -184,11 +180,25 @@
             100% { opacity: 0.4; }
         }
 
+        .token-badge {
+            margin-top: 14px;
+            padding: 10px 14px;
+            background-color: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--accent-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         #output {
             white-space: pre-wrap;
             line-height: 1.6;
             font-size: 0.95rem;
             color: #e2e8f0;
+            margin-top: 14px;
         }
 
         .error-message {
@@ -218,12 +228,6 @@
 
     <div class="card">
         <h2>2. Chart Analysis Query</h2>
-        <label for="modelSelect">Select AI Model Engine</label>
-        <select id="modelSelect">
-            <option value="llama">Meta Llama 3.1 8B (Primary / Edge AI)</option>
-            <option value="gemini">Google Gemini (Secondary / Fallback)</option>
-        </select>
-
         <label for="prompt">Prompt Input (Synthesizes using Analysis Approach & stored chart memory)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
         <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
@@ -237,6 +241,12 @@
             <div id="step3" class="progress-step" style="display:none;"></div>
             <div id="step4" class="progress-step" style="display:none;"></div>
         </div>
+        
+        <div id="tokenBadge" class="token-badge" style="display:none;">
+            <span>📊 <strong>Token Usage:</strong></span>
+            <span id="tokenStatsText">Calculating...</span>
+        </div>
+
         <div id="output"></div>
     </div>
 </div>
@@ -258,6 +268,7 @@
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
         const inspector = document.getElementById('progressInspector');
+        const tokenBadge = document.getElementById('tokenBadge');
 
         if (!chartData) {
             alert("Please provide chart baseline text before saving.");
@@ -268,6 +279,7 @@
         memoryStatus.textContent = "Chart Memory: Active (Planetary baseline stored in session)";
         
         inspector.style.display = "none";
+        tokenBadge.style.display = "none";
         resultCard.style.display = "block";
         outputDiv.className = "";
         outputDiv.textContent = "--- CHART BASELINE SUCCESSFULLY SAVED TO SESSION MEMORY ---\n\n" + chartData;
@@ -292,11 +304,12 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 
     async function processQuery() {
         const userPrompt = document.getElementById('prompt').value.trim();
-        const selectedModel = document.getElementById('modelSelect').value;
         const submitBtn = document.getElementById('submitBtn');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
         const inspector = document.getElementById('progressInspector');
+        const tokenBadge = document.getElementById('tokenBadge');
+        const tokenStatsText = document.getElementById('tokenStatsText');
 
         const step1 = document.getElementById('step1');
         const step2 = document.getElementById('step2');
@@ -312,6 +325,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
         submitBtn.textContent = "Synthesizing Analysis Approach...";
         resultCard.style.display = "block";
         inspector.style.display = "block";
+        tokenBadge.style.display = "none";
         outputDiv.className = "";
         outputDiv.textContent = "";
 
@@ -323,23 +337,23 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
         try {
             step1.className = "progress-step active";
             step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 150));
 
-            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
+            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT'] || "No prior chart baseline entered.";
             step1.className = "progress-step done";
             step1.textContent = "Step 1/4: Natal chart baseline successfully loaded.";
 
             step2.style.display = "flex";
             step2.className = "progress-step active";
             step2.textContent = "Step 2/4: Loading refined Analysis Approach (Concise 7-Rule speed protocol)...";
-            await new Promise(r => setTimeout(r, 250));
+            await new Promise(r => setTimeout(r, 150));
             step2.className = "progress-step done";
             step2.textContent = "Step 2/4: Concise Analysis Approach rules embedded into prompt structure.";
 
             step3.style.display = "flex";
             step3.className = "progress-step active";
-            step3.textContent = `Step 3/4: Compiling fast prompt for model (${selectedModel.toUpperCase()})...`;
-            await new Promise(r => setTimeout(r, 200));
+            step3.textContent = `Step 3/4: Compiling fast prompt for Meta Llama 3.3...`;
+            await new Promise(r => setTimeout(r, 150));
 
             const analysisApproachText = getAnalysisApproachPrompt();
             const combinedPrompt = `${analysisApproachText}\n\n[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
@@ -349,12 +363,12 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 
             step4.style.display = "flex";
             step4.className = "progress-step active";
-            step4.textContent = `Step 4/4: Connecting to Cloudflare Worker (${selectedModel === 'llama' ? 'Meta Llama Primary' : 'Gemini Secondary'})...`;
+            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Meta Llama...";
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: combinedPrompt, model: selectedModel })
+                body: JSON.stringify({ prompt: combinedPrompt })
             });
 
             if (!response.ok) {
@@ -368,6 +382,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let partialBuffer = "";
+            let fullResponseText = "";
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -383,25 +398,36 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
                         if (dataStr === "[DONE]") continue;
                         try {
                             const json = JSON.parse(dataStr);
-                            // Handle both Workers AI Llama format and Gemini format safely
-                            const textChunk = json.response || json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                            const textChunk = json.response || "";
+                            fullResponseText += textChunk;
                             outputDiv.textContent += textChunk;
                         } catch (e) {
-                            // Raw text or non-json SSE chunk handler if needed
-                            if (dataStr) outputDiv.textContent += dataStr;
+                            if (dataStr) {
+                                fullResponseText += dataStr;
+                                outputDiv.textContent += dataStr;
+                            }
                         }
                     } else if (line.trim() && !line.startsWith(":")) {
-                        // Handle raw chunk output if streaming directly
                         try {
                             const json = JSON.parse(line);
-                            const textChunk = json.response || json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                            const textChunk = json.response || "";
+                            fullResponseText += textChunk;
                             outputDiv.textContent += textChunk;
                         } catch(e) {
+                            fullResponseText += line + "\n";
                             outputDiv.textContent += line + "\n";
                         }
                     }
                 }
             }
+
+            // Calculate Token Metrics (Standard LLM rule: ~4 chars per token)
+            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
+            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
+            const totalTokenCount = inputTokenCount + outputTokenCount;
+
+            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} | Total: ~${totalTokenCount} tokens`;
+            tokenBadge.style.display = "flex";
 
         } catch (error) {
             console.error("Gateway Call Failed:", error);
