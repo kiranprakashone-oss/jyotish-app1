@@ -78,7 +78,7 @@
             font-weight: 500;
         }
 
-        textarea {
+        select, textarea {
             width: 100%;
             background-color: rgba(11, 15, 25, 0.7);
             border: 1px solid var(--border-color);
@@ -88,12 +88,16 @@
             font-size: 0.95rem;
             margin-bottom: 14px;
             padding: 12px;
-            resize: vertical;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        textarea:focus {
+        select option {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        select:focus, textarea:focus {
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
@@ -146,7 +150,6 @@
             font-weight: 500;
         }
 
-        /* Progress Steps Inspector */
         .progress-inspector {
             background-color: var(--step-bg);
             border: 1px dashed var(--accent-primary);
@@ -209,12 +212,18 @@
     <div class="card">
         <h2>1. Enter Chart Baseline Data</h2>
         <label for="chartDataInput">Enter Lagna, planetary degrees, Nakshatras, and Rasis:</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Saturn 12°33' in Scorpio, Exalted Mars 1°22' in Capricorn, Atmakaraka Mercury 27°18' in Virgo..."></textarea>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Saturn 12°33' in Scorpio, Exalted Mars 1°22' in Capricorn..."></textarea>
         <button id="saveBtn" onclick="saveChartBaseline()">Save Chart Baseline to Memory</button>
     </div>
 
     <div class="card">
         <h2>2. Chart Analysis Query</h2>
+        <label for="modelSelect">Select AI Model Engine</label>
+        <select id="modelSelect">
+            <option value="llama">Meta Llama 3.1 8B (Primary / Edge AI)</option>
+            <option value="gemini">Google Gemini (Secondary / Fallback)</option>
+        </select>
+
         <label for="prompt">Prompt Input (Synthesizes using Analysis Approach & stored chart memory)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
         <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
@@ -235,7 +244,6 @@
 <script>
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
 
-    // Load stored chart context on startup if available
     window.onload = function() {
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
@@ -256,7 +264,6 @@
             return;
         }
 
-        // Store baseline in session memory
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', chartData);
         memoryStatus.textContent = "Chart Memory: Active (Planetary baseline stored in session)";
         
@@ -266,11 +273,6 @@
         outputDiv.textContent = "--- CHART BASELINE SUCCESSFULLY SAVED TO SESSION MEMORY ---\n\n" + chartData;
     }
 
-    /**
-     * ==========================================
-     * ANALYSIS APPROACH CONFIGURATION SECTION
-     * ==========================================
-     */
     function getAnalysisApproachPrompt() {
         return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH]
 You are an expert Vedic astrologer. Evaluate the user query using the following 7-Rule framework:
@@ -290,6 +292,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 
     async function processQuery() {
         const userPrompt = document.getElementById('prompt').value.trim();
+        const selectedModel = document.getElementById('modelSelect').value;
         const submitBtn = document.getElementById('submitBtn');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
@@ -312,14 +315,12 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
         outputDiv.className = "";
         outputDiv.textContent = "";
 
-        // Reset step visibility
         step1.style.display = "flex";
         step2.style.display = "none";
         step3.style.display = "none";
         step4.style.display = "none";
 
         try {
-            // Step 1: Load Natal Baseline
             step1.className = "progress-step active";
             step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
             await new Promise(r => setTimeout(r, 200));
@@ -328,7 +329,6 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step1.className = "progress-step done";
             step1.textContent = "Step 1/4: Natal chart baseline successfully loaded.";
 
-            // Step 2: Apply Analysis Approach
             step2.style.display = "flex";
             step2.className = "progress-step active";
             step2.textContent = "Step 2/4: Loading refined Analysis Approach (Concise 7-Rule speed protocol)...";
@@ -336,10 +336,9 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step2.className = "progress-step done";
             step2.textContent = "Step 2/4: Concise Analysis Approach rules embedded into prompt structure.";
 
-            // Step 3: Build Structured Prompt combining Approach, Baseline, and Query
             step3.style.display = "flex";
             step3.className = "progress-step active";
-            step3.textContent = `Step 3/4: Compiling fast prompt for user focus: "${userPrompt.substring(0, 30)}..."`;
+            step3.textContent = `Step 3/4: Compiling fast prompt for model (${selectedModel.toUpperCase()})...`;
             await new Promise(r => setTimeout(r, 200));
 
             const analysisApproachText = getAnalysisApproachPrompt();
@@ -348,15 +347,14 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step3.className = "progress-step done";
             step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
 
-            // Step 4: Network Handshake & Stream Init
             step4.style.display = "flex";
             step4.className = "progress-step active";
-            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Gemini API...";
+            step4.textContent = `Step 4/4: Connecting to Cloudflare Worker (${selectedModel === 'llama' ? 'Meta Llama Primary' : 'Gemini Secondary'})...`;
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: combinedPrompt })
+                body: JSON.stringify({ prompt: combinedPrompt, model: selectedModel })
             });
 
             if (!response.ok) {
@@ -367,7 +365,6 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step4.className = "progress-step done";
             step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis...";
 
-            // Stream Reader Logic to prevent 504 Timeouts
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let partialBuffer = "";
@@ -378,16 +375,29 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 
                 partialBuffer += decoder.decode(value, { stream: true });
                 const lines = partialBuffer.split("\n");
-                partialBuffer = lines.pop(); // Hold incomplete chunk
+                partialBuffer = lines.pop();
 
                 for (const line of lines) {
                     if (line.startsWith("data: ")) {
+                        const dataStr = line.replace("data: ", "").trim();
+                        if (dataStr === "[DONE]") continue;
                         try {
-                            const json = JSON.parse(line.replace("data: ", ""));
-                            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                            const json = JSON.parse(dataStr);
+                            // Handle both Workers AI Llama format and Gemini format safely
+                            const textChunk = json.response || json.candidates?.[0]?.content?.parts?.[0]?.text || "";
                             outputDiv.textContent += textChunk;
                         } catch (e) {
-                            // Ignore SSE parsing splits across chunks
+                            // Raw text or non-json SSE chunk handler if needed
+                            if (dataStr) outputDiv.textContent += dataStr;
+                        }
+                    } else if (line.trim() && !line.startsWith(":")) {
+                        // Handle raw chunk output if streaming directly
+                        try {
+                            const json = JSON.parse(line);
+                            const textChunk = json.response || json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                            outputDiv.textContent += textChunk;
+                        } catch(e) {
+                            outputDiv.textContent += line + "\n";
                         }
                     }
                 }
