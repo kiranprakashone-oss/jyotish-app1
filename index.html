@@ -270,8 +270,6 @@
      * ==========================================
      * ANALYSIS APPROACH CONFIGURATION SECTION
      * ==========================================
-     * Refined for maximum generation speed and 
-     * concise high-impact responses.
      */
     function getAnalysisApproachPrompt() {
         return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH]
@@ -350,10 +348,10 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             step3.className = "progress-step done";
             step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
 
-            // Step 4: Network Handshake
+            // Step 4: Network Handshake & Stream Init
             step4.style.display = "flex";
             step4.className = "progress-step active";
-            step4.textContent = "Step 4/4: Executing handshake with Cloudflare Worker & Gemini API model...";
+            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Gemini API...";
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
@@ -366,14 +364,34 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
                 throw new Error(`Server Error (${response.status}): ${errorText}`);
             }
 
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
-
             step4.className = "progress-step done";
-            step4.textContent = "Step 4/4: Handshake complete! Fast synthesis generated.";
+            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis...";
 
-            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data, null, 2);
-            outputDiv.textContent = generatedText;
+            // Stream Reader Logic to prevent 504 Timeouts
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop(); // Hold incomplete chunk
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const json = JSON.parse(line.replace("data: ", ""));
+                            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                            outputDiv.textContent += textChunk;
+                        } catch (e) {
+                            // Ignore SSE parsing splits across chunks
+                        }
+                    }
+                }
+            }
 
         } catch (error) {
             console.error("Gateway Call Failed:", error);
