@@ -270,19 +270,24 @@
      * ==========================================
      * ANALYSIS APPROACH CONFIGURATION SECTION
      * ==========================================
-     * Modify or expand this function in the future to 
-     * adjust how rules and analytical steps are structured.
+     * Refined for maximum generation speed and 
+     * concise high-impact responses.
      */
     function getAnalysisApproachPrompt() {
         return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH]
-You are an expert Vedic astrologer. Evaluate the user query rigorously by systematically applying the following multi-rule analytical framework to the provided natal baseline:
-1. Ascendant / Lagna Framework: Evaluate structural foundation and house lord dispositions.
-2. House System & Bhava Madhya: Analyze exact house midpoint boundaries and occupancy.
-3. Planetary Placement Audit: Assess planetary dignities, Nakshatras, Padas, and Navamsa placements.
-4. Multi-Dasha Matrix: Synchronize Vimshottari, Chara, and Yogini dasha influences.
-5. Transit Overlay: Apply Dual Reference Frame analysis (Lagna & Chandra Lagna transits).
-6. Aspect Geometry: Check Parashari aspects and Gandanta boundary conditions.
-7. Comprehensive Synthesis: Deliver a cohesive, definitive conclusion addressing the user's specific focus.`;
+You are an expert Vedic astrologer. Evaluate the user query using the following 7-Rule framework:
+1. Lagna Framework: Structural foundation and house lord dispositions.
+2. Bhava Madhya: Exact house midpoint boundaries and occupancy.
+3. Planetary Placement: Dignities, Nakshatras, Padas, and Navamsa placements.
+4. Multi-Dasha Matrix: Synchronize Vimshottari, Chara, and Yogini dashas.
+5. Transit Overlay: Dual Reference Frame (Lagna & Chandra Lagna transits).
+6. Aspect Geometry: Parashari aspects and Gandanta boundary checks.
+7. Concise Synthesis: Final conclusion addressing user focus.
+
+[RESPONSE FORMAT MANDATE FOR SPEED]
+- Be direct, highly structured, and concise (under 350 words total).
+- Focus specifically on the rules most relevant to the user query.
+- Use concise bullet points; omit conversational filler.`;
     }
 
     async function processQuery() {
@@ -319,7 +324,7 @@ You are an expert Vedic astrologer. Evaluate the user query rigorously by system
             // Step 1: Load Natal Baseline
             step1.className = "progress-step active";
             step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 200));
 
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
@@ -328,22 +333,22 @@ You are an expert Vedic astrologer. Evaluate the user query rigorously by system
             // Step 2: Apply Analysis Approach
             step2.style.display = "flex";
             step2.className = "progress-step active";
-            step2.textContent = "Step 2/4: Loading the Analysis Approach configuration (7-Rule framework & evaluation protocols)...";
-            await new Promise(r => setTimeout(r, 400));
+            step2.textContent = "Step 2/4: Loading refined Analysis Approach (Concise 7-Rule speed protocol)...";
+            await new Promise(r => setTimeout(r, 250));
             step2.className = "progress-step done";
-            step2.textContent = "Step 2/4: Analysis Approach rules embedded into prompt structure.";
+            step2.textContent = "Step 2/4: Concise Analysis Approach rules embedded into prompt structure.";
 
             // Step 3: Build Structured Prompt combining Approach, Baseline, and Query
             step3.style.display = "flex";
             step3.className = "progress-step active";
-            step3.textContent = `Step 3/4: Compiling prompt for user focus: "${userPrompt.substring(0, 30)}..."`;
-            await new Promise(r => setTimeout(r, 300));
+            step3.textContent = `Step 3/4: Compiling fast prompt for user focus: "${userPrompt.substring(0, 30)}..."`;
+            await new Promise(r => setTimeout(r, 200));
 
             const analysisApproachText = getAnalysisApproachPrompt();
             const combinedPrompt = `${analysisApproachText}\n\n[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
 
             step3.className = "progress-step done";
-            step3.textContent = "Step 3/4: Structured evaluation prompt successfully compiled.";
+            step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
 
             // Step 4: Network Handshake
             step4.style.display = "flex";
@@ -365,7 +370,7 @@ You are an expert Vedic astrologer. Evaluate the user query rigorously by system
             if (data.error) throw new Error(data.error);
 
             step4.className = "progress-step done";
-            step4.textContent = "Step 4/4: Handshake complete! Analysis Approach synthesis generated.";
+            step4.textContent = "Step 4/4: Handshake complete! Fast synthesis generated.";
 
             const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data, null, 2);
             outputDiv.textContent = generatedText;
