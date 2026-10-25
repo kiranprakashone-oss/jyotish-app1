@@ -6,65 +6,96 @@
     <title>Vedic Jyotish Analysis Engine</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --text-color: #f8fafc;
+            --bg-color: #0b0f19;
+            --card-bg: #151c2c;
+            --accent-primary: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-light: #818cf8;
+            --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border-color: #334155;
-            --error-color: #f43f5e;
+            --border-color: #26334d;
+            --error-color: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
             --success-color: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --step-bg: rgba(99, 102, 241, 0.08);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--text-main);
             margin: 0;
-            padding: 16px;
+            padding: 24px 16px;
             display: flex;
             justify-content: center;
+            line-height: 1.5;
         }
 
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 640px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
         }
 
         .card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(99, 102, 241, 0.05);
+            transition: border-color 0.2s;
         }
 
-        h1, h2 {
-            margin: 0 0 12px 0;
-            color: var(--accent-color);
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: linear-gradient(135deg, #ffffff 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            margin: 0 0 14px 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--accent-light);
         }
 
         label {
             font-size: 0.875rem;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             display: block;
+            font-weight: 500;
         }
 
         textarea {
             width: 100%;
-            background-color: var(--bg-color);
+            background-color: rgba(11, 15, 25, 0.7);
             border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-color);
+            border-radius: 10px;
+            color: var(--text-main);
             box-sizing: border-box;
-            font-size: 1rem;
-            margin-bottom: 12px;
-            padding: 10px;
+            font-size: 0.95rem;
+            margin-bottom: 14px;
+            padding: 12px;
             resize: vertical;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
 
         #chartDataInput {
@@ -72,40 +103,98 @@
         }
 
         #prompt {
-            height: 80px;
+            height: 90px;
         }
 
         button {
             width: 100%;
-            padding: 12px;
-            background-color: var(--accent-color);
-            color: #0f172a;
-            font-weight: bold;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
+            color: #ffffff;
+            font-weight: 600;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: opacity 0.2s;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         button:disabled {
-            opacity: 0.5;
+            opacity: 0.55;
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         .status {
             font-size: 0.85rem;
-            margin-top: 8px;
-            padding: 8px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.05);
+            margin-top: 6px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: var(--success-bg);
+            border: 1px solid rgba(16, 185, 129, 0.2);
             color: var(--success-color);
+            font-weight: 500;
+        }
+
+        /* Progress Steps Inspector */
+        .progress-inspector {
+            background-color: var(--step-bg);
+            border: 1px dashed var(--accent-primary);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 14px;
+            font-family: monospace;
+            font-size: 0.82rem;
+            color: var(--accent-light);
+            display: none;
+        }
+
+        .progress-step {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .progress-step.active::before {
+            content: "⏳";
+            animation: pulse 1s infinite;
+        }
+
+        .progress-step.done::before {
+            content: "✅";
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
         }
 
         #output {
             white-space: pre-wrap;
-            line-height: 1.5;
+            line-height: 1.6;
             font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            background: var(--error-bg);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -113,26 +202,32 @@
 
 <div class="container">
     <div class="card">
-        <h1>Vedic Jyotish Engine</h1>
-        <div id="memoryStatus" class="status">Chart Memory: No chart data stored in session yet.</div>
+        <h1>Vedic Jyotish Analysis Engine</h1>
+        <div id="memoryStatus" class="status">Chart Memory: No chart baseline stored in session yet.</div>
     </div>
 
     <div class="card">
         <h2>1. Enter Chart Baseline Data</h2>
         <label for="chartDataInput">Enter Lagna, planetary degrees, Nakshatras, and Rasis:</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Nakshatra), Saturn in 1st, Exalted Mars in 3rd, Atmakaraka Mercury in 12th, Moon in..., Sun in..."></textarea>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Saturn 12°33' in Scorpio, Exalted Mars 1°22' in Capricorn, Atmakaraka Mercury 27°18' in Virgo..."></textarea>
         <button id="saveBtn" onclick="saveChartBaseline()">Save Chart Baseline to Memory</button>
     </div>
 
     <div class="card">
         <h2>2. Chart Analysis Query</h2>
-        <label for="prompt">Prompt Input (Synthesizes using stored chart memory)</label>
+        <label for="prompt">Prompt Input (Synthesizes using Analysis Approach & stored chart memory)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
         <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
     </div>
 
     <div class="card" id="resultCard" style="display: none;">
-        <h2>Output Results</h2>
+        <h2>Analysis Approach & Handshake Inspector</h2>
+        <div id="progressInspector" class="progress-inspector">
+            <div id="step1" class="progress-step">Initializing workflow...</div>
+            <div id="step2" class="progress-step" style="display:none;"></div>
+            <div id="step3" class="progress-step" style="display:none;"></div>
+            <div id="step4" class="progress-step" style="display:none;"></div>
+        </div>
         <div id="output"></div>
     </div>
 </div>
@@ -154,6 +249,7 @@
         const memoryStatus = document.getElementById('memoryStatus');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
+        const inspector = document.getElementById('progressInspector');
 
         if (!chartData) {
             alert("Please provide chart baseline text before saving.");
@@ -164,8 +260,29 @@
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', chartData);
         memoryStatus.textContent = "Chart Memory: Active (Planetary baseline stored in session)";
         
+        inspector.style.display = "none";
         resultCard.style.display = "block";
+        outputDiv.className = "";
         outputDiv.textContent = "--- CHART BASELINE SUCCESSFULLY SAVED TO SESSION MEMORY ---\n\n" + chartData;
+    }
+
+    /**
+     * ==========================================
+     * ANALYSIS APPROACH CONFIGURATION SECTION
+     * ==========================================
+     * Modify or expand this function in the future to 
+     * adjust how rules and analytical steps are structured.
+     */
+    function getAnalysisApproachPrompt() {
+        return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH]
+You are an expert Vedic astrologer. Evaluate the user query rigorously by systematically applying the following multi-rule analytical framework to the provided natal baseline:
+1. Ascendant / Lagna Framework: Evaluate structural foundation and house lord dispositions.
+2. House System & Bhava Madhya: Analyze exact house midpoint boundaries and occupancy.
+3. Planetary Placement Audit: Assess planetary dignities, Nakshatras, Padas, and Navamsa placements.
+4. Multi-Dasha Matrix: Synchronize Vimshottari, Chara, and Yogini dasha influences.
+5. Transit Overlay: Apply Dual Reference Frame analysis (Lagna & Chandra Lagna transits).
+6. Aspect Geometry: Check Parashari aspects and Gandanta boundary conditions.
+7. Comprehensive Synthesis: Deliver a cohesive, definitive conclusion addressing the user's specific focus.`;
     }
 
     async function processQuery() {
@@ -173,6 +290,12 @@
         const submitBtn = document.getElementById('submitBtn');
         const outputDiv = document.getElementById('output');
         const resultCard = document.getElementById('resultCard');
+        const inspector = document.getElementById('progressInspector');
+
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        const step4 = document.getElementById('step4');
 
         if (!userPrompt) {
             alert("Please provide input query parameters for analysis.");
@@ -180,16 +303,52 @@
         }
 
         submitBtn.disabled = true;
-        submitBtn.textContent = "Synthesizing with Stored Chart Memory...";
+        submitBtn.textContent = "Synthesizing Analysis Approach...";
         resultCard.style.display = "block";
-        outputDiv.textContent = "Combining query with stored natal baseline...";
+        inspector.style.display = "block";
+        outputDiv.className = "";
+        outputDiv.textContent = "";
+
+        // Reset step visibility
+        step1.style.display = "flex";
+        step2.style.display = "none";
+        step3.style.display = "none";
+        step4.style.display = "none";
 
         try {
-            // Retrieve stored chart context from session memory
-            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered. Proceed using standard framework rules.";
+            // Step 1: Load Natal Baseline
+            step1.className = "progress-step active";
+            step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
+            await new Promise(r => setTimeout(r, 300));
 
-            // Combine stored chart context with the user's active query prompt
-            const combinedPrompt = `[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
+            step1.className = "progress-step done";
+            step1.textContent = "Step 1/4: Natal chart baseline successfully loaded.";
+
+            // Step 2: Apply Analysis Approach
+            step2.style.display = "flex";
+            step2.className = "progress-step active";
+            step2.textContent = "Step 2/4: Loading the Analysis Approach configuration (7-Rule framework & evaluation protocols)...";
+            await new Promise(r => setTimeout(r, 400));
+            step2.className = "progress-step done";
+            step2.textContent = "Step 2/4: Analysis Approach rules embedded into prompt structure.";
+
+            // Step 3: Build Structured Prompt combining Approach, Baseline, and Query
+            step3.style.display = "flex";
+            step3.className = "progress-step active";
+            step3.textContent = `Step 3/4: Compiling prompt for user focus: "${userPrompt.substring(0, 30)}..."`;
+            await new Promise(r => setTimeout(r, 300));
+
+            const analysisApproachText = getAnalysisApproachPrompt();
+            const combinedPrompt = `${analysisApproachText}\n\n[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+
+            step3.className = "progress-step done";
+            step3.textContent = "Step 3/4: Structured evaluation prompt successfully compiled.";
+
+            // Step 4: Network Handshake
+            step4.style.display = "flex";
+            step4.className = "progress-step active";
+            step4.textContent = "Step 4/4: Executing handshake with Cloudflare Worker & Gemini API model...";
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
@@ -205,32 +364,23 @@
             const data = await response.json();
             if (data.error) throw new Error(data.error);
 
+            step4.className = "progress-step done";
+            step4.textContent = "Step 4/4: Handshake complete! Analysis Approach synthesis generated.";
+
             const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(data, null, 2);
             outputDiv.textContent = generatedText;
 
         } catch (error) {
             console.error("Gateway Call Failed:", error);
-
-            const fallbackNotice = `Network Notice: Cloud handshake restricted (${error.message}). Running 7-Rule Engine local synthesis fallback:\n\n`;
-            outputDiv.textContent = fallbackNotice + runSevenRuleEngine(userPrompt);
-
+            document.querySelectorAll('.progress-step.active').forEach(el => {
+                el.className = "progress-step";
+            });
+            outputDiv.className = "error-message";
+            outputDiv.textContent = `Connection Failed: ${error.message}`;
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = "Run Synthesis";
         }
-    }
-
-    function runSevenRuleEngine(input) {
-        const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "Default Scorpio Lagna setup";
-        return `[7-RULE ENGINE LOCAL FALLBACK OUTPUT]
-- Baseline Context: ${storedContext}
-1. Ascendant / Lagna Framework: Structural analysis activated.
-2. House System: Bhava Madhya midpoint geometry applied.
-3. Planetary Placement Audit: Dignities and house positions evaluated.
-4. Multi-Dasha Matrix: Vimshottari, Chara, and Yogini Dasha synchronization compiled.
-5. Transit Overlay: Dual Reference Frame active (Lagna & Chandra Lagna).
-6. Aspect Geometry: Parashari and Gandanta boundary checks calculated.
-7. Conclusion: Query synthesized locally. Focus: "${input}"`;
     }
 </script>
 
