@@ -291,8 +291,8 @@
     }
 
     function getAnalysisApproachPrompt() {
-        return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH]
-You are an expert Vedic astrologer. Evaluate the user query using the following 7-Rule framework:
+        return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
+You are an expert Vedic astrologer and scholar. Evaluate the user query using the following 7-Rule framework:
 1. Lagna Framework: Structural foundation and house lord dispositions.
 2. Bhava Madhya: Exact house midpoint boundaries and occupancy.
 3. Planetary Placement: Dignities, Nakshatras, Padas, and Navamsa placements.
@@ -301,10 +301,13 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 6. Aspect Geometry: Parashari aspects and Gandanta boundary checks.
 7. Concise Synthesis: Final conclusion addressing user focus.
 
+[MANDATORY OUTPUT REQUIREMENT: REFERENCE MATERIAL & KNOWLEDGE SOURCES]
+At the end of your analysis, explicitly list the classical texts, treatises, or reference principles evaluated during this synthesis (e.g., Brihat Parashara Hora Shastra, Jaimini Sutras, Phaladeepika, Bhava Madhya house demarcation formulas, or standard planetary transit/dasha correlation principles).
+
 [RESPONSE FORMAT MANDATE FOR SPEED]
-- Be direct, highly structured, and concise (under 350 words total).
-- Focus specifically on the rules most relevant to the user query.
-- Use concise bullet points; omit conversational filler.`;
+- Be direct, highly structured, and concise (under 400 words total).
+- Use concise bullet points; omit conversational filler.
+- Include a dedicated section at the bottom titled "### Evaluated Reference Materials".`;
     }
 
     async function processQuery() {
@@ -350,10 +353,10 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
 
             step2.style.display = "flex";
             step2.className = "progress-step active";
-            step2.textContent = "Step 2/4: Loading refined Analysis Approach (Concise 7-Rule speed protocol)...";
+            step2.textContent = "Step 2/4: Loading refined Analysis Approach & Source Mapping rules...";
             await new Promise(r => setTimeout(r, 150));
             step2.className = "progress-step done";
-            step2.textContent = "Step 2/4: Concise Analysis Approach rules embedded into prompt structure.";
+            step2.textContent = "Step 2/4: 7-Rule framework & Reference Material mapping embedded.";
 
             step3.style.display = "flex";
             step3.className = "progress-step active";
@@ -382,7 +385,7 @@ You are an expert Vedic astrologer. Evaluate the user query using the following 
             }
 
             step4.className = "progress-step done";
-            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis...";
+            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis & source mapping...";
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
