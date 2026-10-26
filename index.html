@@ -106,7 +106,10 @@
             height: 90px;
         }
 
+        /* Explicitly guarantee clickability and stacking order */
         button {
+            position: relative;
+            z-index: 10;
             width: 100%;
             padding: 12px 16px;
             background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
@@ -118,6 +121,7 @@
             font-size: 0.95rem;
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
             transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+            pointer-events: auto !important;
         }
 
         button:hover:not(:disabled) {
@@ -246,7 +250,8 @@
         <h2>1. Chart Data & Bhava Chalit Calculation</h2>
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
-        <button id="parseBtn" type="button">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
+        <!-- Added explicit inline onclick as well as ID listener -->
+        <button id="parseBtn" type="button" onclick="parseChartData()">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
 
         <div id="matrixContainer" style="display:none;">
             <label style="margin-top: 14px; color: var(--accent-light);">Calculated Bhava Chalit Matrix (Sripati / Porphyry System):</label>
@@ -256,7 +261,7 @@
         <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Bhava Chalit Data</label>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the Bhava Chalit houses computed via the Sripati system (Ascendant as first house midpoint) look correct before locking them into memory.</p>
-            <button id="confirmBtn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
+            <button id="confirmBtn" type="button" onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
 
@@ -264,7 +269,7 @@
         <h2>2. Chart Analysis Query</h2>
         <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
-        <button id="submitBtn" type="button" disabled>Run Synthesis (Baseline Required)</button>
+        <button id="submitBtn" type="button" onclick="processQuery()" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
     <div class="card" id="resultCard" style="display: none;">
@@ -290,7 +295,6 @@
     let rawParsedDataText = "";
 
     window.onload = function() {
-        // Restore session context if present
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
@@ -298,22 +302,6 @@
             document.getElementById('queryCard').style.opacity = "1";
             document.getElementById('queryCard').style.pointerEvents = "auto";
             document.getElementById('submitBtn').disabled = false;
-        }
-
-        // Programmatically attach event listeners to guarantee execution
-        const parseBtn = document.getElementById('parseBtn');
-        if (parseBtn) {
-            parseBtn.addEventListener('click', parseChartData);
-        }
-
-        const confirmBtn = document.getElementById('confirmBtn');
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', confirmAndStoreBaseline);
-        }
-
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', processQuery);
         }
     };
 
@@ -450,42 +438,4 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
     }
 
     async function processQuery() {
-        const userPrompt = document.getElementById('prompt').value.trim();
-        const submitBtn = document.getElementById('submitBtn');
-        const outputDiv = document.getElementById('output');
-        const resultCard = document.getElementById('resultCard');
-        const inspector = document.getElementById('progressInspector');
-        const tokenBadge = document.getElementById('tokenBadge');
-        const tokenStatsText = document.getElementById('tokenStatsText');
-
-        const step1 = document.getElementById('step1');
-        const step2 = document.getElementById('step2');
-        const step3 = document.getElementById('step3');
-        const step4 = document.getElementById('step4');
-
-        if (!userPrompt) {
-            alert("Please provide input query parameters for analysis.");
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Synthesizing Analysis Approach...";
-        resultCard.style.display = "block";
-        inspector.style.display = "block";
-        tokenBadge.style.display = "none";
-        outputDiv.className = "";
-        outputDiv.textContent = "";
-
-        step1.style.display = "flex";
-        step2.style.display = "none";
-        step3.style.display = "none";
-        step4.style.display = "none";
-
-        try {
-            step1.className = "progress-step active";
-            step1.textContent = "Step 1/4: Retrieving confirmed Sripati Bhava Chalit matrix & chart baseline from session memory...";
-            await new Promise(r => setTimeout(r, 150));
-
-            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
-            step1.className = "progress-step done";
-            step1.textContent = "Step 1/4: Confirmed Sripati
+        const userPrompt =
