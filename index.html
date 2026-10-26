@@ -335,10 +335,14 @@ ${chartData}`;
                 body: JSON.stringify({ prompt: extractionPrompt })
             });
 
-            if (!response.ok) throw new Error("Failed to compute planetary table.");
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
+            }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
             let resultText = "";
             matrixOutput.textContent = "";
 
@@ -346,9 +350,37 @@ ${chartData}`;
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                resultText += chunk;
-                matrixOutput.textContent += chunk;
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const dataStr = line.replace("data: ", "").trim();
+                        if (dataStr === "[DONE]") continue;
+                        try {
+                            const json = JSON.parse(dataStr);
+                            const textChunk = json.response || "";
+                            resultText += textChunk;
+                            matrixOutput.textContent += textChunk;
+                        } catch (e) {
+                            if (dataStr) {
+                                resultText += dataStr;
+                                matrixOutput.textContent += dataStr;
+                            }
+                        }
+                    } else if (line.trim() && !line.startsWith(":")) {
+                        try {
+                            const json = JSON.parse(line);
+                            const textChunk = json.response || "";
+                            resultText += textChunk;
+                            matrixOutput.textContent += textChunk;
+                        } catch(e) {
+                            resultText += line + "\n";
+                            matrixOutput.textContent += line + "\n";
+                        }
+                    }
+                }
             }
 
             rawParsedDataText = resultText;
@@ -514,32 +546,3 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
                         } catch(e) {
                             fullResponseText += line + "\n";
                             outputDiv.textContent += line + "\n";
-                        }
-                    }
-                }
-            }
-
-            // Calculate Token Metrics (~4 chars per token rule)
-            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
-            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
-            const totalTokenCount = inputTokenCount + outputTokenCount;
-
-            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} | Total: ~${totalTokenCount} tokens`;
-            tokenBadge.style.display = "flex";
-
-        } catch (error) {
-            console.error("Gateway Call Failed:", error);
-            document.querySelectorAll('.progress-step.active').forEach(el => {
-                el.className = "progress-step";
-            });
-            outputDiv.className = "error-message";
-            outputDiv.textContent = `Connection Failed: ${error.message}`;
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Run Synthesis";
-        }
-    }
-</script>
-
-</body>
-</html>
