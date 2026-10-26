@@ -170,7 +170,6 @@
             border-radius: 10px;
         }
 
-        /* Progress Steps Inspector */
         .progress-inspector {
             background-color: var(--step-bg);
             border: 1px dashed var(--accent-primary);
@@ -302,26 +301,27 @@
     };
 
     async function parseChartData() {
-        const chartData = document.getElementById('chartDataInput').value.trim();
-        const memoryStatus = document.getElementById('memoryStatus');
-        const matrixContainer = document.getElementById('matrixContainer');
-        const matrixOutput = document.getElementById('matrixOutput');
-        const consentBox = document.getElementById('consentBox');
-        const parseBtn = document.getElementById('parseBtn');
+        try {
+            const chartData = document.getElementById('chartDataInput').value.trim();
+            const memoryStatus = document.getElementById('memoryStatus');
+            const matrixContainer = document.getElementById('matrixContainer');
+            const matrixOutput = document.getElementById('matrixOutput');
+            const consentBox = document.getElementById('consentBox');
+            const parseBtn = document.getElementById('parseBtn');
 
-        if (!chartData) {
-            alert("Please provide raw chart baseline text first.");
-            return;
-        }
+            if (!chartData) {
+                alert("Please provide raw chart baseline text first.");
+                return;
+            }
 
-        parseBtn.disabled = true;
-        parseBtn.textContent = "Calculating Matrix via Chart Preparation Rules...";
-        memoryStatus.textContent = "Processing: Applying Bhava Madhya house system & exact Lagna degree alignment...";
-        matrixContainer.style.display = "block";
-        matrixOutput.textContent = "Connecting to Llama compute engine...";
-        consentBox.style.display = "none";
+            parseBtn.disabled = true;
+            parseBtn.textContent = "Calculating Matrix via Chart Preparation Rules...";
+            memoryStatus.textContent = "Processing: Applying Bhava Madhya house system & exact Lagna degree alignment...";
+            matrixContainer.style.display = "block";
+            matrixOutput.textContent = "Connecting to Llama compute engine...";
+            consentBox.style.display = "none";
 
-        const extractionPrompt = `[SYSTEM INSTRUCTION: CHART PREPARATION RULES & MATRIX COMPUTATION]
+            const extractionPrompt = `[SYSTEM INSTRUCTION: CHART PREPARATION RULES & MATRIX COMPUTATION]
 You are a precision Vedic Jyotish calculation engine. 
 MANDATORY RULES FOR THIS CALCULATION:
 1. Exact Lagna Degrees: Extract and anchor calculations using the exact degree of the Lagna provided by the user.
@@ -331,7 +331,6 @@ MANDATORY RULES FOR THIS CALCULATION:
 Raw Input Data:
 ${chartData}`;
 
-        try {
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -340,7 +339,7 @@ ${chartData}`;
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}):${errorText}`);
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
             }
 
             const reader = response.body.getReader();
@@ -385,12 +384,16 @@ ${chartData}`;
             memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Bhava Madhya matrix above)";
 
         } catch (error) {
+            console.error("Parse Chart Error:", error);
             alert("Error parsing chart: " + error.message);
-            memoryStatus.textContent = "Chart Memory: Error during calculation.";
-            matrixOutput.textContent = "Error: " + error.message;
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Error during calculation.";
+            document.getElementById('matrixOutput').textContent = "Error: " + error.message;
         } finally {
-            parseBtn.disabled = false;
-            parseBtn.textContent = "1. Calculate 9-Planets Matrix via Chart Preparation Rules";
+            const parseBtn = document.getElementById('parseBtn');
+            if (parseBtn) {
+                parseBtn.disabled = false;
+                parseBtn.textContent = "1. Calculate 9-Planets Matrix via Chart Preparation Rules";
+            }
         }
     }
 
@@ -483,4 +486,86 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
             await new Promise(r => setTimeout(r, 150));
 
             const analysisApproachText = getAnalysisApproachPrompt();
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED BHAVA MADHYA PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED BHAVA MADHYA PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+
+            step3.className = "progress-step done";
+            step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
+
+            step4.style.display = "flex";
+            step4.className = "progress-step active";
+            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Meta Llama...";
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: combinedPrompt })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
+            }
+
+            step4.className = "progress-step done";
+            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis & source mapping...";
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+            let fullResponseText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
+
+                    let dataStr = trimmed;
+                    if (dataStr.startsWith("data: ")) {
+                        dataStr = dataStr.replace("data: ", "").trim();
+                    }
+                    if (dataStr === "[DONE]") continue;
+
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const textChunk = json.response || json.text || "";
+                        fullResponseText += textChunk;
+                        outputDiv.textContent += textChunk;
+                    } catch (e) {
+                        const fallbackText = dataStr + "\n";
+                        fullResponseText += fallbackText;
+                        outputDiv.textContent += fallbackText;
+                    }
+                }
+            }
+
+            // Calculate Token Metrics (~4 chars per token rule)
+            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
+            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
+            const totalTokenCount = inputTokenCount + outputTokenCount;
+
+            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} | Total: ~${totalTokenCount} tokens`;
+            tokenBadge.style.display = "flex";
+
+        } catch (error) {
+            console.error("Gateway Call Failed:", error);
+            document.querySelectorAll('.progress-step.active').forEach(el => {
+                el.className = "progress-step";
+            });
+            outputDiv.className = "error-message";
+            outputDiv.textContent = `Connection Failed: ${error.message}`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Run Synthesis";
+        }
+    }
+</script>
+
+</body>
+</html>
