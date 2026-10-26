@@ -34,7 +34,7 @@
 
         .container {
             width: 100%;
-            max-width: 640px;
+            max-width: 720px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -146,6 +146,44 @@
             font-weight: 500;
         }
 
+        /* Planetary Table */
+        .planet-table-container {
+            overflow-x: auto;
+            margin-top: 14px;
+            margin-bottom: 14px;
+        }
+
+        table.planet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+
+        table.planet-table th, table.planet-table td {
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        table.planet-table th {
+            background-color: rgba(99, 102, 241, 0.15);
+            color: var(--accent-light);
+            font-weight: 600;
+        }
+
+        table.planet-table tr:nth-child(even) {
+            background-color: rgba(25, 33, 53, 0.4);
+        }
+
+        .consent-box {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 10px;
+        }
+
         /* Progress Steps Inspector */
         .progress-inspector {
             background-color: var(--step-bg);
@@ -220,17 +258,42 @@
     </div>
 
     <div class="card">
-        <h2>1. Enter Chart Baseline Data</h2>
-        <label for="chartDataInput">Enter Lagna, planetary degrees, Nakshatras, and Rasis:</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Saturn 12°33' in Scorpio, Exalted Mars 1°22' in Capricorn..."></textarea>
-        <button id="saveBtn" onclick="saveChartBaseline()">Save Chart Baseline to Memory</button>
+        <h2>1. Chart Data & Planetary Baseline Extraction</h2>
+        <label for="chartDataInput">Enter Raw Chart Baseline (Lagna, Degrees, Nakshatras, Rasis):</label>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14', Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
+        <button id="parseBtn" onclick="parseChartData()">1. Parse Chart & Build Planetary Table</button>
+
+        <div id="tableContainer" class="planet-table-container" style="display:none;">
+            <h3>Calculated Planetary Positions Matrix</h3>
+            <table class="planet-table" id="planetTable">
+                <thead>
+                    <tr>
+                        <th>Planet</th>
+                        <th>House / Bhava</th>
+                        <th>Rasi Sign</th>
+                        <th>Exact Degree</th>
+                        <th>Nakshatra & Pada</th>
+                        <th>Navamsa Sign</th>
+                    </tr>
+                </thead>
+                <tbody id="planetTableBody">
+                    <!-- Dynamic Rows populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="consentBox" class="consent-box">
+            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Extracted Table Data</label>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the 9-planet calculations above look correct before locking them into memory for analysis queries.</p>
+            <button onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
+        </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="queryCard" style="opacity: 0.5; pointer-events: none;">
         <h2>2. Chart Analysis Query</h2>
-        <label for="prompt">Prompt Input (Synthesizes using Analysis Approach & stored chart memory)</label>
+        <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
-        <button id="submitBtn" onclick="processQuery()">Run Synthesis</button>
+        <button id="submitBtn" onclick="processQuery()" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
     <div class="card" id="resultCard" style="display: none;">
@@ -252,42 +315,117 @@
 </div>
 
 <script>
-    const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
+    const WORKER_URL = "https://jyotish-app1.kiranprakashone.workers.dev";
+    let rawParsedDataText = "";
 
     window.onload = function() {
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
-            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Planetary baseline stored in session)";
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed planetary baseline loaded)";
+            document.getElementById('queryCard').style.opacity = "1";
+            document.getElementById('queryCard').style.pointerEvents = "auto";
+            document.getElementById('submitBtn').disabled = false;
         }
     };
 
-    function saveChartBaseline() {
+    async function parseChartData() {
         const chartData = document.getElementById('chartDataInput').value.trim();
         const memoryStatus = document.getElementById('memoryStatus');
-        const outputDiv = document.getElementById('output');
-        const resultCard = document.getElementById('resultCard');
-        const inspector = document.getElementById('progressInspector');
-        const tokenBadge = document.getElementById('tokenBadge');
+        const tableContainer = document.getElementById('tableContainer');
+        const planetTableBody = document.getElementById('planetTableBody');
+        const consentBox = document.getElementById('consentBox');
+        const parseBtn = document.getElementById('parseBtn');
 
         if (!chartData) {
-            alert("Please provide chart baseline text before saving.");
+            alert("Please provide raw chart baseline text first.");
             return;
         }
 
-        // Save to session storage
-        sessionStorage.setItem('JYOTISH_CHART_CONTEXT', chartData);
+        parseBtn.disabled = true;
+        parseBtn.textContent = "Calculating 9 Planets Matrix via Llama...";
+        memoryStatus.textContent = "Processing: Computing House, Rasi, Nakshatra & Navamsa for all 9 planets...";
+
+        const extractionPrompt = `[SYSTEM INSTRUCTION: PLANETARY TABLE EXTRACTION]
+You are a Vedic Jyotish computation engine. Given the raw chart details below, calculate and list the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) plus Lagna.
+Format your output as a pipe-separated table structure like this for each planet:
+| Planet | House | Rasi | Degree | Nakshatra (Pada) | Navamsa |
+| Sun | ... | ... | ... | ... | ... |
+
+Raw Input Data:
+${chartData}`;
+
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: extractionPrompt })
+            });
+
+            if (!response.ok) throw new Error("Failed to compute planetary table.");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let resultText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                resultText += decoder.decode(value, { stream: true });
+            }
+
+            rawParsedDataText = resultText;
+            
+            // Parse table rows from markdown/pipe text or render text cleanly
+            planetTableBody.innerHTML = "";
+            const lines = resultText.split("\n");
+            let rowCount = 0;
+
+            for (const line of lines) {
+                if (line.includes("|") && !line.includes("---") && !line.includes("Planet")) {
+                    const cols = line.split("|").map(c => c.trim()).filter(c => c.length > 0);
+                    if (cols.length >= 6) {
+                        rowCount++;
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `<td><strong>${cols[0]}</strong></td><td>${cols[1]}</td><td>${cols[2]}</td><td>${cols[3]}</td><td>${cols[4]}</td><td>${cols[5]}</td>`;
+                        planetTableBody.appendChild(tr);
+                    }
+                }
+            }
+
+            if (rowCount === 0) {
+                // Fallback row if model didn't use exact pipe formatting
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td colspan="6" style="white-space: pre-wrap;">${resultText}</td>`;
+                planetTableBody.appendChild(tr);
+            }
+
+            tableContainer.style.display = "block";
+            consentBox.style.display = "block";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review table below)";
+
+        } catch (error) {
+            alert("Error parsing chart: " + error.message);
+            memoryStatus.textContent = "Chart Memory: Error during calculation.";
+        } finally {
+            parseBtn.disabled = false;
+            parseBtn.textContent = "1. Parse Chart & Build Planetary Table";
+        }
+    }
+
+    function confirmAndStoreBaseline() {
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[COMPUTED 9-PLANET MATRIX]\n" + rawParsedDataText;
+        sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
+
+        const memoryStatus = document.getElementById('memoryStatus');
+        memoryStatus.textContent = "Chart Memory: Active (Confirmed planetary baseline locked in session)";
         
-        // Update Status Banner UI
-        memoryStatus.textContent = "Chart Memory: Active (Planetary baseline stored in session)";
-        
-        // Hide step inspector & token badge for save confirmation view, show result container
-        inspector.style.display = "none";
-        tokenBadge.style.display = "none";
-        resultCard.style.display = "block";
-        
-        outputDiv.className = "";
-        outputDiv.textContent = "--- CHART BASELINE SUCCESSFULLY SAVED TO SESSION MEMORY ---\n\n" + chartData;
+        document.getElementById('queryCard').style.opacity = "1";
+        document.getElementById('queryCard').style.pointerEvents = "auto";
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('consentBox').style.display = "none";
+
+        alert("Baseline successfully locked to session memory! You can now run analytical queries.");
     }
 
     function getAnalysisApproachPrompt() {
@@ -344,12 +482,12 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
 
         try {
             step1.className = "progress-step active";
-            step1.textContent = "Step 1/4: Retrieving stored Natal Chart Baseline from session memory...";
+            step1.textContent = "Step 1/4: Retrieving confirmed 9-planet matrix & chart baseline from session memory...";
             await new Promise(r => setTimeout(r, 150));
 
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
-            step1.textContent = "Step 1/4: Natal chart baseline successfully loaded.";
+            step1.textContent = "Step 1/4: Confirmed planetary baseline successfully loaded.";
 
             step2.style.display = "flex";
             step2.className = "progress-step active";
@@ -364,7 +502,7 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
             await new Promise(r => setTimeout(r, 150));
 
             const analysisApproachText = getAnalysisApproachPrompt();
-            const combinedPrompt = `${analysisApproachText}\n\n[NATAL CHART BASELINE MEMORY]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
 
             step3.className = "progress-step done";
             step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
