@@ -14,11 +14,7 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border-color: #26334d;
-            --error-color: #ef4444;
-            --error-bg: rgba(239, 68, 68, 0.1);
             --success-color: #10b981;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --step-bg: rgba(99, 102, 241, 0.08);
         }
 
         body {
@@ -45,7 +41,7 @@
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(99, 102, 241, 0.05);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
 
         h1 {
@@ -81,10 +77,11 @@
             color: var(--text-main);
             box-sizing: border-box;
             font-size: 0.95rem;
-            margin-bottom: 14px;
+            margin-bottom: 20px;
             padding: 12px;
             resize: vertical;
             outline: none;
+            height: 110px;
         }
 
         textarea:focus {
@@ -92,33 +89,26 @@
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
 
-        #chartDataInput {
-            height: 110px;
-        }
-
-        #prompt {
-            height: 90px;
-        }
-
+        /* Guaranteed Clickability Stack */
         button {
-            position: relative;
-            z-index: 10;
+            position: relative !important;
+            z-index: 9999 !important;
             width: 100%;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
             color: #ffffff;
             font-weight: 600;
             border: none;
             border-radius: 10px;
-            cursor: pointer;
+            cursor: pointer !important;
             font-size: 0.95rem;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
             pointer-events: auto !important;
         }
 
         button:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
         }
 
         button:disabled {
@@ -134,7 +124,7 @@
             border-radius: 8px;
             background: rgba(16, 185, 129, 0.1);
             border: 1px solid rgba(16, 185, 129, 0.2);
-            color: #10b981;
+            color: var(--success-color);
             font-weight: 500;
         }
 
@@ -212,7 +202,9 @@
     <div class="card">
         <h2>1. Chart Data & Bhava Chalit Calculation</h2>
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha...">Capricorn at 1° 22' 06.48", and Mercury is in Virgo at 27° 18' 09.76". Additionally, Jupiter is located in Aquarius at 23° 13' 53.18", Venus is in Libra at 22° 03' 49.92", Saturn is in Scorpio at 12° 33' 11.85", Rahu is in Pisces at 28° 29' 48.34", and Ketu is in Virgo at 28° 29' 48.34".</textarea>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Capricorn at 1° 22' 06.48", and Mercury is in Virgo at 27° 18' 09.76". Additionally, Jupiter is located in Aquarius at 23° 13' 53.18", Venus is in Libra at 22° 03' 49.92", Saturn is in Scorpio at 12° 33' 11.85", Rahu is in Pisces at 28° 29' 48.34", and Ketu is in Virgo at 28° 29' 48.34".</textarea>
+        
+        <!-- Button with explicit inline click listener and high z-index -->
         <button id="parseBtn" type="button" onclick="parseChartData()">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
 
         <div id="matrixContainer" style="display:none;">
@@ -223,4 +215,241 @@
         <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Bhava Chalit Data</label>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the Bhava Chalit houses computed via the Sripati system look correct before locking them into memory.</p>
-            <button id="confirmBtn" type="button" onclick
+            <button id="confirmBtn" type="button" onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
+        </div>
+    </div>
+
+    <div class="card" id="queryCard" style="opacity: 0.5; pointer-events: none;">
+        <h2>2. Chart Analysis Query</h2>
+        <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
+        <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
+        <button id="submitBtn" type="button" onclick="processQuery()" disabled>Run Synthesis (Baseline Required)</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display: none;">
+        <h2>Analysis Approach & Handshake Inspector</h2>
+        <div id="progressInspector" class="progress-inspector">
+            <div id="step1" class="progress-step">Initializing workflow...</div>
+        </div>
+        <div id="tokenBadge" class="token-badge" style="display:none;">
+            <span>📊 <strong>Token Usage:</strong></span>
+            <span id="tokenStatsText">Calculating...</span>
+        </div>
+        <div id="output"></div>
+    </div>
+</div>
+
+<script>
+    const WORKER_URL = "";
+    let rawParsedDataText = "";
+
+    window.onload = function() {
+        console.log("Jyotish Engine Initialized.");
+        const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
+        if (storedContext) {
+            document.getElementById('chartDataInput').value = storedContext;
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed Bhava Chalit baseline loaded)";
+            document.getElementById('queryCard').style.opacity = "1";
+            document.getElementById('queryCard').style.pointerEvents = "auto";
+            document.getElementById('submitBtn').disabled = false;
+        }
+    };
+
+    async function parseChartData() {
+        console.log("parseChartData() triggered!");
+        try {
+            const chartData = document.getElementById('chartDataInput').value.trim();
+            const memoryStatus = document.getElementById('memoryStatus');
+            const matrixContainer = document.getElementById('matrixContainer');
+            const matrixOutput = document.getElementById('matrixOutput');
+            const consentBox = document.getElementById('consentBox');
+            const parseBtn = document.getElementById('parseBtn');
+
+            if (!chartData) {
+                alert("Please provide raw chart baseline text first.");
+                return;
+            }
+
+            parseBtn.disabled = true;
+            parseBtn.textContent = "Calculating Bhava Chalit Matrix via Sripati Rules...";
+            memoryStatus.textContent = "Processing: Applying Sripati (Porphyry) house system with exact Ascendant midpoint...";
+            matrixContainer.style.display = "block";
+            matrixOutput.textContent = "Connecting to Llama compute engine...";
+            consentBox.style.display = "none";
+
+            const extractionPrompt = `[SYSTEM INSTRUCTION: SRIPATI BHAVA CHALIT PREPARATION RULES]
+You are a precision Vedic Jyotish calculation engine. 
+MANDATORY RULES FOR THIS CALCULATION:
+1. Sripati (Porphyry) House System: Calculate the Bhava Chalit chart using the classical Sripati house system.
+2. Ascendant Midpoint Anchor: The exact degree of the Lagna (Ascendant) provided by the user must serve precisely as the midpoint (Bhava Madhya) of the 1st house. Cusp boundaries span symmetrically halfway to the preceding and succeeding midpoints.
+3. 9-Planet Chalit Placements: Compute and detail the exact Bhava Chalit House placement, Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna, highlighting any shifts between Rasi house and Chalit house.
+
+Raw Input Data:
+${chartData}`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: extractionPrompt })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+            let resultText = "";
+            matrixOutput.textContent = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
+
+                    let dataStr = trimmed;
+                    if (dataStr.startsWith("data: ")) {
+                        dataStr = dataStr.replace("data: ", "").trim();
+                    }
+                    if (dataStr === "[DONE]") continue;
+
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const textChunk = json.response || json.text || "";
+                        resultText += textChunk;
+                        matrixOutput.textContent += textChunk;
+                    } catch (e) {
+                        const fallbackText = dataStr + "\n";
+                        resultText += fallbackText;
+                        matrixOutput.textContent += fallbackText;
+                    }
+                }
+            }
+
+            rawParsedDataText = resultText;
+            consentBox.style.display = "block";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Sripati Bhava Chalit matrix above)";
+
+        } catch (error) {
+            console.error("Parse Chart Error:", error);
+            alert("Error parsing chart: " + error.message);
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Error during calculation.";
+            document.getElementById('matrixOutput').textContent = "Error: " + error.message;
+        } finally {
+            const parseBtn = document.getElementById('parseBtn');
+            if (parseBtn) {
+                parseBtn.disabled = false;
+                parseBtn.textContent = "1. Calculate Bhava Chalit Matrix via Sripati Rules";
+            }
+        }
+    }
+
+    function confirmAndStoreBaseline() {
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX]\n" + rawParsedDataText;
+        sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
+
+        document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Sripati Bhava Chalit baseline locked in session)";
+        document.getElementById('queryCard').style.opacity = "1";
+        document.getElementById('queryCard').style.pointerEvents = "auto";
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('consentBox').style.display = "none";
+
+        alert("Sripati Bhava Chalit baseline successfully locked to session memory!");
+    }
+
+    async function processQuery() {
+        const userPrompt = document.getElementById('prompt').value.trim();
+        const submitBtn = document.getElementById('submitBtn');
+        const outputDiv = document.getElementById('output');
+        const resultCard = document.getElementById('resultCard');
+        const tokenBadge = document.getElementById('tokenBadge');
+        const tokenStatsText = document.getElementById('tokenStatsText');
+
+        if (!userPrompt) {
+            alert("Please provide input query parameters for analysis.");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Synthesizing Analysis Approach...";
+        resultCard.style.display = "block";
+        tokenBadge.style.display = "none";
+        outputDiv.textContent = "";
+
+        try {
+            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
+            const analysisApproachText = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
+You are an expert Vedic astrologer and scholar. Evaluate the user query using the 7-Rule framework (Lagna, Bhava Chalit Sripati, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Conclude with '### Evaluated Reference Materials'.`;
+            
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: combinedPrompt })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+            let fullResponseText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
+
+                    let dataStr = trimmed;
+                    if (dataStr.startsWith("data: ")) {
+                        dataStr = dataStr.replace("data: ", "").trim();
+                    }
+                    if (dataStr === "[DONE]") continue;
+
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const textChunk = json.response || json.text || "";
+                        fullResponseText += textChunk;
+                        outputDiv.textContent += textChunk;
+                    } catch (e) {
+                        outputDiv.textContent += dataStr + "\n";
+                    }
+                }
+            }
+
+            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
+            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
+            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} tokens`;
+            tokenBadge.style.display = "flex";
+
+        } catch (error) {
+            outputDiv.textContent = `Connection Failed: ${error.message}`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Run Synthesis";
+        }
+    }
+</script>
+
+</body>
+</html>
