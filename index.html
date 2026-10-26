@@ -245,18 +245,18 @@
 
     <div class="card">
         <h2>1. Chart Data & Planetary Baseline Calculation</h2>
-        <label for="chartDataInput">Enter Raw Chart Baseline (Lagna, Degrees, Nakshatras, Rasis):</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14', Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
-        <button id="parseBtn" onclick="parseChartData()">1. Calculate 9-Planets Matrix via Llama</button>
+        <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
+        <button id="parseBtn" onclick="parseChartData()">1. Calculate 9-Planets Matrix via Chart Preparation Rules</button>
 
         <div id="matrixContainer" style="display:none;">
-            <label style="margin-top: 14px; color: var(--accent-light);">Calculated 9-Planet Matrix & Positions:</label>
+            <label style="margin-top: 14px; color: var(--accent-light);">Calculated 9-Planet Matrix (Bhava Madhya & Lagna Degree Aligned):</label>
             <div id="matrixOutput" class="matrix-box"></div>
         </div>
 
         <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Planetary Data</label>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the 9-planet calculations above look correct before locking them into memory for analysis queries.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the calculated house positions (using Bhava Madhya boundaries and exact Lagna degrees) look correct before locking them into memory.</p>
             <button onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
@@ -315,15 +315,18 @@
         }
 
         parseBtn.disabled = true;
-        parseBtn.textContent = "Calculating 9 Planets Matrix via Llama...";
-        memoryStatus.textContent = "Processing: Computing House, Rasi, Nakshatra & Navamsa for all 9 planets...";
+        parseBtn.textContent = "Calculating Matrix via Chart Preparation Rules...";
+        memoryStatus.textContent = "Processing: Applying Bhava Madhya house system & exact Lagna degree alignment...";
         matrixContainer.style.display = "block";
         matrixOutput.textContent = "Connecting to Llama compute engine...";
         consentBox.style.display = "none";
 
-        const extractionPrompt = `[SYSTEM INSTRUCTION: PLANETARY MATRIX COMPUTATION]
-You are a Vedic Jyotish calculation engine. Given the raw chart details below, compute and detail the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna.
-Present the calculated details cleanly as a structured list or table for each planet.
+        const extractionPrompt = `[SYSTEM INSTRUCTION: CHART PREPARATION RULES & MATRIX COMPUTATION]
+You are a precision Vedic Jyotish calculation engine. 
+MANDATORY RULES FOR THIS CALCULATION:
+1. Exact Lagna Degrees: Extract and anchor calculations using the exact degree of the Lagna provided by the user.
+2. Bhava Madhya House System: House positions (bhavas) for all planets must be calculated using the Bhava Madhya (house mid-point) house demarcation system rather than simple whole-sign house boundaries, evaluating exact planetary degrees against house cusp midpoints.
+3. 9-Planet Details: Compute and detail the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna.
 
 Raw Input Data:
 ${chartData}`;
@@ -337,7 +340,7 @@ ${chartData}`;
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}): ${errorText}`);
+                throw new Error(`Server Error (${response.status}):${errorText}`);
             }
 
             const reader = response.body.getReader();
@@ -370,7 +373,6 @@ ${chartData}`;
                         resultText += textChunk;
                         matrixOutput.textContent += textChunk;
                     } catch (e) {
-                        // Bulletproof fallback: if not JSON, append raw text line safely
                         const fallbackText = dataStr + "\n";
                         resultText += fallbackText;
                         matrixOutput.textContent += fallbackText;
@@ -380,7 +382,7 @@ ${chartData}`;
 
             rawParsedDataText = resultText;
             consentBox.style.display = "block";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated matrix above)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Bhava Madhya matrix above)";
 
         } catch (error) {
             alert("Error parsing chart: " + error.message);
@@ -388,23 +390,23 @@ ${chartData}`;
             matrixOutput.textContent = "Error: " + error.message;
         } finally {
             parseBtn.disabled = false;
-            parseBtn.textContent = "1. Calculate 9-Planets Matrix via Llama";
+            parseBtn.textContent = "1. Calculate 9-Planets Matrix via Chart Preparation Rules";
         }
     }
 
     function confirmAndStoreBaseline() {
-        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED COMPUTED 9-PLANET MATRIX]\n" + rawParsedDataText;
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED BHAVA MADHYA 9-PLANET MATRIX]\n" + rawParsedDataText;
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
 
         const memoryStatus = document.getElementById('memoryStatus');
-        memoryStatus.textContent = "Chart Memory: Active (Confirmed planetary baseline locked in session)";
+        memoryStatus.textContent = "Chart Memory: Active (Bhava Madhya planetary baseline locked in session)";
         
         document.getElementById('queryCard').style.opacity = "1";
         document.getElementById('queryCard').style.pointerEvents = "auto";
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('consentBox').style.display = "none";
 
-        alert("Baseline successfully locked to session memory! You can now run analytical queries.");
+        alert("Bhava Madhya baseline successfully locked to session memory! You can now run analytical queries.");
     }
 
     function getAnalysisApproachPrompt() {
@@ -461,12 +463,12 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
 
         try {
             step1.className = "progress-step active";
-            step1.textContent = "Step 1/4: Retrieving confirmed 9-planet matrix & chart baseline from session memory...";
+            step1.textContent = "Step 1/4: Retrieving confirmed Bhava Madhya matrix & chart baseline from session memory...";
             await new Promise(r => setTimeout(r, 150));
 
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
-            step1.textContent = "Step 1/4: Confirmed planetary baseline successfully loaded.";
+            step1.textContent = "Step 1/4: Confirmed Bhava Madhya baseline successfully loaded.";
 
             step2.style.display = "flex";
             step2.className = "progress-step active";
@@ -481,86 +483,4 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
             await new Promise(r => setTimeout(r, 150));
 
             const analysisApproachText = getAnalysisApproachPrompt();
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
-
-            step3.className = "progress-step done";
-            step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
-
-            step4.style.display = "flex";
-            step4.className = "progress-step active";
-            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Meta Llama...";
-
-            const response = await fetch(WORKER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: combinedPrompt })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}): ${errorText}`);
-            }
-
-            step4.className = "progress-step done";
-            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis & source mapping...";
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let partialBuffer = "";
-            let fullResponseText = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                partialBuffer += decoder.decode(value, { stream: true });
-                const lines = partialBuffer.split("\n");
-                partialBuffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed.startsWith(":")) continue;
-
-                    let dataStr = trimmed;
-                    if (dataStr.startsWith("data: ")) {
-                        dataStr = dataStr.replace("data: ", "").trim();
-                    }
-                    if (dataStr === "[DONE]") continue;
-
-                    try {
-                        const json = JSON.parse(dataStr);
-                        const textChunk = json.response || json.text || "";
-                        fullResponseText += textChunk;
-                        outputDiv.textContent += textChunk;
-                    } catch (e) {
-                        const fallbackText = dataStr + "\n";
-                        fullResponseText += fallbackText;
-                        outputDiv.textContent += fallbackText;
-                    }
-                }
-            }
-
-            // Calculate Token Metrics (~4 chars per token rule)
-            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
-            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
-            const totalTokenCount = inputTokenCount + outputTokenCount;
-
-            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} | Total: ~${totalTokenCount} tokens`;
-            tokenBadge.style.display = "flex";
-
-        } catch (error) {
-            console.error("Gateway Call Failed:", error);
-            document.querySelectorAll('.progress-step.active').forEach(el => {
-                el.className = "progress-step";
-            });
-            outputDiv.className = "error-message";
-            outputDiv.textContent = `Connection Failed: ${error.message}`;
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Run Synthesis";
-        }
-    }
-</script>
-
-</body>
-</html>
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED BHAVA MADHYA PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n
