@@ -246,7 +246,7 @@
         <h2>1. Chart Data & Bhava Chalit Calculation</h2>
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
-        <button id="parseBtn" onclick="parseChartData()">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
+        <button id="parseBtn" type="button">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
 
         <div id="matrixContainer" style="display:none;">
             <label style="margin-top: 14px; color: var(--accent-light);">Calculated Bhava Chalit Matrix (Sripati / Porphyry System):</label>
@@ -256,7 +256,7 @@
         <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Bhava Chalit Data</label>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the Bhava Chalit houses computed via the Sripati system (Ascendant as first house midpoint) look correct before locking them into memory.</p>
-            <button onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
+            <button id="confirmBtn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
 
@@ -264,7 +264,7 @@
         <h2>2. Chart Analysis Query</h2>
         <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
-        <button id="submitBtn" onclick="processQuery()" disabled>Run Synthesis (Baseline Required)</button>
+        <button id="submitBtn" type="button" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
     <div class="card" id="resultCard" style="display: none;">
@@ -290,6 +290,7 @@
     let rawParsedDataText = "";
 
     window.onload = function() {
+        // Restore session context if present
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
@@ -297,6 +298,22 @@
             document.getElementById('queryCard').style.opacity = "1";
             document.getElementById('queryCard').style.pointerEvents = "auto";
             document.getElementById('submitBtn').disabled = false;
+        }
+
+        // Programmatically attach event listeners to guarantee execution
+        const parseBtn = document.getElementById('parseBtn');
+        if (parseBtn) {
+            parseBtn.addEventListener('click', parseChartData);
+        }
+
+        const confirmBtn = document.getElementById('confirmBtn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', confirmAndStoreBaseline);
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', processQuery);
         }
     };
 
@@ -471,55 +488,4 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
 
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
-            step1.textContent = "Step 1/4: Confirmed Sripati Bhava Chalit baseline successfully loaded.";
-
-            step2.style.display = "flex";
-            step2.className = "progress-step active";
-            step2.textContent = "Step 2/4: Loading refined Analysis Approach & Source Mapping rules...";
-            await new Promise(r => setTimeout(r, 150));
-            step2.className = "progress-step done";
-            step2.textContent = "Step 2/4: 7-Rule framework & Reference Material mapping embedded.";
-
-            step3.style.display = "flex";
-            step3.className = "progress-step active";
-            step3.textContent = `Step 3/4: Compiling fast prompt for Meta Llama 3.3...`;
-            await new Promise(r => setTimeout(r, 150));
-
-            const analysisApproachText = getAnalysisApproachPrompt();
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
-
-            step3.className = "progress-step done";
-            step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
-
-            step4.style.display = "flex";
-            step4.className = "progress-step active";
-            step4.textContent = "Step 4/4: Connecting stream to Cloudflare Worker & Meta Llama...";
-
-            const response = await fetch(WORKER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: combinedPrompt })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}): ${errorText}`);
-            }
-
-            step4.className = "progress-step done";
-            step4.textContent = "Step 4/4: Stream connected! Receiving live synthesis & source mapping...";
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let partialBuffer = "";
-            let fullResponseText = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                partialBuffer += decoder.decode(value, { stream: true });
-                const lines = partialBuffer.split("\n");
-                partialBuffer = lines.pop();
-
-                for (const
+            step1.textContent = "Step 1/4: Confirmed Sripati
