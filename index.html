@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine</title>
+    <title>Vedic Jyotish Analysis Engine - Sripati Bhava Chalit</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -243,19 +243,19 @@
     </div>
 
     <div class="card">
-        <h2>1. Chart Data & Planetary Baseline Calculation</h2>
+        <h2>1. Chart Data & Bhava Chalit Calculation</h2>
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2), Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
-        <button id="parseBtn" onclick="parseChartData()">1. Calculate 9-Planets Matrix via Chart Preparation Rules</button>
+        <button id="parseBtn" onclick="parseChartData()">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
 
         <div id="matrixContainer" style="display:none;">
-            <label style="margin-top: 14px; color: var(--accent-light);">Calculated 9-Planet Matrix (Bhava Madhya & Lagna Degree Aligned):</label>
+            <label style="margin-top: 14px; color: var(--accent-light);">Calculated Bhava Chalit Matrix (Sripati / Porphyry System):</label>
             <div id="matrixOutput" class="matrix-box"></div>
         </div>
 
         <div id="consentBox" class="consent-box">
-            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Planetary Data</label>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the calculated house positions (using Bhava Madhya boundaries and exact Lagna degrees) look correct before locking them into memory.</p>
+            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Bhava Chalit Data</label>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the Bhava Chalit houses computed via the Sripati system (Ascendant as first house midpoint) look correct before locking them into memory.</p>
             <button onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
@@ -293,7 +293,7 @@
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
-            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed planetary baseline loaded)";
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed Bhava Chalit baseline loaded)";
             document.getElementById('queryCard').style.opacity = "1";
             document.getElementById('queryCard').style.pointerEvents = "auto";
             document.getElementById('submitBtn').disabled = false;
@@ -315,18 +315,18 @@
             }
 
             parseBtn.disabled = true;
-            parseBtn.textContent = "Calculating Matrix via Chart Preparation Rules...";
-            memoryStatus.textContent = "Processing: Applying Bhava Madhya house system & exact Lagna degree alignment...";
+            parseBtn.textContent = "Calculating Bhava Chalit Matrix via Sripati Rules...";
+            memoryStatus.textContent = "Processing: Applying Sripati (Porphyry) house system with exact Ascendant midpoint...";
             matrixContainer.style.display = "block";
             matrixOutput.textContent = "Connecting to Llama compute engine...";
             consentBox.style.display = "none";
 
-            const extractionPrompt = `[SYSTEM INSTRUCTION: CHART PREPARATION RULES & MATRIX COMPUTATION]
+            const extractionPrompt = `[SYSTEM INSTRUCTION: SRIPATI BHAVA CHALIT PREPARATION RULES]
 You are a precision Vedic Jyotish calculation engine. 
 MANDATORY RULES FOR THIS CALCULATION:
-1. Exact Lagna Degrees: Extract and anchor calculations using the exact degree of the Lagna provided by the user.
-2. Bhava Madhya House System: House positions (bhavas) for all planets must be calculated using the Bhava Madhya (house mid-point) house demarcation system rather than simple whole-sign house boundaries, evaluating exact planetary degrees against house cusp midpoints.
-3. 9-Planet Details: Compute and detail the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna.
+1. Sripati (Porphyry) House System: Calculate the Bhava Chalit chart using the classical Sripati house system.
+2. Ascendant Midpoint Anchor: The exact degree of the Lagna (Ascendant) provided by the user must serve precisely as the midpoint (Bhava Madhya) of the 1st house. Cusp boundaries span symmetrically halfway to the preceding and succeeding midpoints.
+3. 9-Planet Chalit Placements: Compute and detail the exact Bhava Chalit House placement, Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna, highlighting any shifts between Rasi house and Chalit house.
 
 Raw Input Data:
 ${chartData}`;
@@ -381,7 +381,7 @@ ${chartData}`;
 
             rawParsedDataText = resultText;
             consentBox.style.display = "block";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Bhava Madhya matrix above)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Sripati Bhava Chalit matrix above)";
 
         } catch (error) {
             console.error("Parse Chart Error:", error);
@@ -392,31 +392,31 @@ ${chartData}`;
             const parseBtn = document.getElementById('parseBtn');
             if (parseBtn) {
                 parseBtn.disabled = false;
-                parseBtn.textContent = "1. Calculate 9-Planets Matrix via Chart Preparation Rules";
+                parseBtn.textContent = "1. Calculate Bhava Chalit Matrix via Sripati Rules";
             }
         }
     }
 
     function confirmAndStoreBaseline() {
-        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED BHAVA MADHYA 9-PLANET MATRIX]\n" + rawParsedDataText;
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX]\n" + rawParsedDataText;
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
 
         const memoryStatus = document.getElementById('memoryStatus');
-        memoryStatus.textContent = "Chart Memory: Active (Bhava Madhya planetary baseline locked in session)";
+        memoryStatus.textContent = "Chart Memory: Active (Sripati Bhava Chalit baseline locked in session)";
         
         document.getElementById('queryCard').style.opacity = "1";
         document.getElementById('queryCard').style.pointerEvents = "auto";
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('consentBox').style.display = "none";
 
-        alert("Bhava Madhya baseline successfully locked to session memory! You can now run analytical queries.");
+        alert("Sripati Bhava Chalit baseline successfully locked to session memory! You can now run analytical queries.");
     }
 
     function getAnalysisApproachPrompt() {
         return `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
 You are an expert Vedic astrologer and scholar. Evaluate the user query using the following 7-Rule framework:
 1. Lagna Framework: Structural foundation and house lord dispositions.
-2. Bhava Madhya: Exact house midpoint boundaries and occupancy.
+2. Bhava Chalit (Sripati): Exact house midpoint boundaries, Chalit house occupancies, and Rasi vs Chalit discrepancies.
 3. Planetary Placement: Dignities, Nakshatras, Padas, and Navamsa placements.
 4. Multi-Dasha Matrix: Synchronize Vimshottari, Chara, and Yogini dashas.
 5. Transit Overlay: Dual Reference Frame (Lagna & Chandra Lagna transits).
@@ -424,7 +424,7 @@ You are an expert Vedic astrologer and scholar. Evaluate the user query using th
 7. Concise Synthesis: Final conclusion addressing user focus.
 
 [MANDATORY OUTPUT REQUIREMENT: REFERENCE MATERIAL & KNOWLEDGE SOURCES]
-At the end of your analysis, explicitly list the classical texts, treatises, or reference principles evaluated during this synthesis (e.g., Brihat Parashara Hora Shastra, Jaimini Sutras, Phaladeepika, Bhava Madhya house demarcation formulas, or standard planetary transit/dasha correlation principles).
+At the end of your analysis, explicitly list the classical texts, treatises, or reference principles evaluated during this synthesis (e.g., Brihat Parashara Hora Shastra, Jaimini Sutras, Phaladeepika, Sripati Paddhati Bhava Chalit demarcation principles).
 
 [RESPONSE FORMAT MANDATE FOR SPEED]
 - Be direct, highly structured, and concise (under 400 words total).
@@ -466,12 +466,12 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
 
         try {
             step1.className = "progress-step active";
-            step1.textContent = "Step 1/4: Retrieving confirmed Bhava Madhya matrix & chart baseline from session memory...";
+            step1.textContent = "Step 1/4: Retrieving confirmed Sripati Bhava Chalit matrix & chart baseline from session memory...";
             await new Promise(r => setTimeout(r, 150));
 
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             step1.className = "progress-step done";
-            step1.textContent = "Step 1/4: Confirmed Bhava Madhya baseline successfully loaded.";
+            step1.textContent = "Step 1/4: Confirmed Sripati Bhava Chalit baseline successfully loaded.";
 
             step2.style.display = "flex";
             step2.className = "progress-step active";
@@ -486,7 +486,7 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
             await new Promise(r => setTimeout(r, 150));
 
             const analysisApproachText = getAnalysisApproachPrompt();
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED BHAVA MADHYA PLANETARY MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
 
             step3.className = "progress-step done";
             step3.textContent = "Step 3/4: Optimized evaluation prompt successfully compiled.";
@@ -522,50 +522,4 @@ At the end of your analysis, explicitly list the classical texts, treatises, or 
                 const lines = partialBuffer.split("\n");
                 partialBuffer = lines.pop();
 
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed.startsWith(":")) continue;
-
-                    let dataStr = trimmed;
-                    if (dataStr.startsWith("data: ")) {
-                        dataStr = dataStr.replace("data: ", "").trim();
-                    }
-                    if (dataStr === "[DONE]") continue;
-
-                    try {
-                        const json = JSON.parse(dataStr);
-                        const textChunk = json.response || json.text || "";
-                        fullResponseText += textChunk;
-                        outputDiv.textContent += textChunk;
-                    } catch (e) {
-                        const fallbackText = dataStr + "\n";
-                        fullResponseText += fallbackText;
-                        outputDiv.textContent += fallbackText;
-                    }
-                }
-            }
-
-            // Calculate Token Metrics (~4 chars per token rule)
-            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
-            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
-            const totalTokenCount = inputTokenCount + outputTokenCount;
-
-            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} | Total: ~${totalTokenCount} tokens`;
-            tokenBadge.style.display = "flex";
-
-        } catch (error) {
-            console.error("Gateway Call Failed:", error);
-            document.querySelectorAll('.progress-step.active').forEach(el => {
-                el.className = "progress-step";
-            });
-            outputDiv.className = "error-message";
-            outputDiv.textContent = `Connection Failed: ${error.message}`;
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Run Synthesis";
-        }
-    }
-</script>
-
-</body>
-</html>
+                for (const
