@@ -146,33 +146,19 @@
             font-weight: 500;
         }
 
-        /* Planetary Table */
-        .planet-table-container {
-            overflow-x: auto;
+        .matrix-box {
+            background-color: rgba(11, 15, 25, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            color: #e2e8f0;
             margin-top: 14px;
             margin-bottom: 14px;
-        }
-
-        table.planet-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-            text-align: left;
-        }
-
-        table.planet-table th, table.planet-table td {
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-        }
-
-        table.planet-table th {
-            background-color: rgba(99, 102, 241, 0.15);
-            color: var(--accent-light);
-            font-weight: 600;
-        }
-
-        table.planet-table tr:nth-child(even) {
-            background-color: rgba(25, 33, 53, 0.4);
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .consent-box {
@@ -258,32 +244,18 @@
     </div>
 
     <div class="card">
-        <h2>1. Chart Data & Planetary Baseline Extraction</h2>
+        <h2>1. Chart Data & Planetary Baseline Calculation</h2>
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna, Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14', Sun in Hasta, Moon in Punarvasu, Mars in Uttara Ashadha..."></textarea>
-        <button id="parseBtn" onclick="parseChartData()">1. Parse Chart & Build Planetary Table</button>
+        <button id="parseBtn" onclick="parseChartData()">1. Calculate 9-Planets Matrix via Llama</button>
 
-        <div id="tableContainer" class="planet-table-container" style="display:none;">
-            <h3>Calculated Planetary Positions Matrix</h3>
-            <table class="planet-table" id="planetTable">
-                <thead>
-                    <tr>
-                        <th>Planet</th>
-                        <th>House / Bhava</th>
-                        <th>Rasi Sign</th>
-                        <th>Exact Degree</th>
-                        <th>Nakshatra & Pada</th>
-                        <th>Navamsa Sign</th>
-                    </tr>
-                </thead>
-                <tbody id="planetTableBody">
-                    <!-- Dynamic Rows populated here -->
-                </tbody>
-            </table>
+        <div id="matrixContainer" style="display:none;">
+            <label style="margin-top: 14px; color: var(--accent-light);">Calculated 9-Planet Matrix & Positions:</label>
+            <div id="matrixOutput" class="matrix-box"></div>
         </div>
 
         <div id="consentBox" class="consent-box">
-            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Extracted Table Data</label>
+            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Planetary Data</label>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the 9-planet calculations above look correct before locking them into memory for analysis queries.</p>
             <button onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Confirm & Lock Baseline to Session Memory</button>
         </div>
@@ -332,8 +304,8 @@
     async function parseChartData() {
         const chartData = document.getElementById('chartDataInput').value.trim();
         const memoryStatus = document.getElementById('memoryStatus');
-        const tableContainer = document.getElementById('tableContainer');
-        const planetTableBody = document.getElementById('planetTableBody');
+        const matrixContainer = document.getElementById('matrixContainer');
+        const matrixOutput = document.getElementById('matrixOutput');
         const consentBox = document.getElementById('consentBox');
         const parseBtn = document.getElementById('parseBtn');
 
@@ -345,12 +317,13 @@
         parseBtn.disabled = true;
         parseBtn.textContent = "Calculating 9 Planets Matrix via Llama...";
         memoryStatus.textContent = "Processing: Computing House, Rasi, Nakshatra & Navamsa for all 9 planets...";
+        matrixContainer.style.display = "block";
+        matrixOutput.textContent = "Connecting to Llama compute engine...";
+        consentBox.style.display = "none";
 
-        const extractionPrompt = `[SYSTEM INSTRUCTION: PLANETARY TABLE EXTRACTION]
-You are a Vedic Jyotish computation engine. Given the raw chart details below, calculate and list the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) plus Lagna.
-Format your output as a pipe-separated table structure like this for each planet:
-| Planet | House | Rasi | Degree | Nakshatra (Pada) | Navamsa |
-| Sun | ... | ... | ... | ... | ... |
+        const extractionPrompt = `[SYSTEM INSTRUCTION: PLANETARY MATRIX COMPUTATION]
+You are a Vedic Jyotish calculation engine. Given the raw chart details below, compute and detail the exact House (Bhava), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna.
+Present the calculated details cleanly as a structured list or table for each planet.
 
 Raw Input Data:
 ${chartData}`;
@@ -367,54 +340,33 @@ ${chartData}`;
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
             let resultText = "";
+            matrixOutput.textContent = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                resultText += decoder.decode(value, { stream: true });
+
+                const chunk = decoder.decode(value, { stream: true });
+                resultText += chunk;
+                matrixOutput.textContent += chunk;
             }
 
             rawParsedDataText = resultText;
-            
-            // Parse table rows from markdown/pipe text or render text cleanly
-            planetTableBody.innerHTML = "";
-            const lines = resultText.split("\n");
-            let rowCount = 0;
-
-            for (const line of lines) {
-                if (line.includes("|") && !line.includes("---") && !line.includes("Planet")) {
-                    const cols = line.split("|").map(c => c.trim()).filter(c => c.length > 0);
-                    if (cols.length >= 6) {
-                        rowCount++;
-                        const tr = document.createElement("tr");
-                        tr.innerHTML = `<td><strong>${cols[0]}</strong></td><td>${cols[1]}</td><td>${cols[2]}</td><td>${cols[3]}</td><td>${cols[4]}</td><td>${cols[5]}</td>`;
-                        planetTableBody.appendChild(tr);
-                    }
-                }
-            }
-
-            if (rowCount === 0) {
-                // Fallback row if model didn't use exact pipe formatting
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td colspan="6" style="white-space: pre-wrap;">${resultText}</td>`;
-                planetTableBody.appendChild(tr);
-            }
-
-            tableContainer.style.display = "block";
             consentBox.style.display = "block";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review table below)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated matrix above)";
 
         } catch (error) {
             alert("Error parsing chart: " + error.message);
             memoryStatus.textContent = "Chart Memory: Error during calculation.";
+            matrixOutput.textContent = "Error: " + error.message;
         } finally {
             parseBtn.disabled = false;
-            parseBtn.textContent = "1. Parse Chart & Build Planetary Table";
+            parseBtn.textContent = "1. Calculate 9-Planets Matrix via Llama";
         }
     }
 
     function confirmAndStoreBaseline() {
-        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[COMPUTED 9-PLANET MATRIX]\n" + rawParsedDataText;
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED COMPUTED 9-PLANET MATRIX]\n" + rawParsedDataText;
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
 
         const memoryStatus = document.getElementById('memoryStatus');
