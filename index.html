@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Bhava Calculator</title>
+    <title>Vedic Jyotish Analysis Engine - Full Context Threading</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -97,14 +97,14 @@
             resize: vertical;
         }
 
-        #prompt {
+        #prompt, #followupPrompt {
             height: 90px;
             resize: vertical;
         }
 
         button {
             position: relative !important;
-            z-index: 9999 !important;
+            z-index: 10 !important;
             width: 100%;
             padding: 14px 16px;
             background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
@@ -163,22 +163,45 @@
             border-radius: 10px;
         }
 
-        .progress-inspector {
-            background-color: rgba(99, 102, 241, 0.08);
-            border: 1px dashed var(--accent-primary);
+        .chat-turn {
+            background-color: rgba(11, 15, 25, 0.6);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 14px;
-            font-family: monospace;
-            font-size: 0.82rem;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .chat-turn.user {
+            border-left: 4px solid var(--accent-light);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .chat-turn.assistant {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .turn-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        .chat-turn.user .turn-label {
             color: var(--accent-light);
         }
 
-        .progress-step {
-            margin-bottom: 8px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
+        .chat-turn.assistant .turn-label {
+            color: var(--success-color);
+        }
+
+        .turn-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: #e2e8f0;
         }
 
         .token-badge {
@@ -193,14 +216,6 @@
             justify-content: space-between;
             align-items: center;
         }
-
-        #output {
-            white-space: pre-wrap;
-            line-height: 1.6;
-            font-size: 0.95rem;
-            color: #e2e8f0;
-            margin-top: 14px;
-        }
     </style>
 </head>
 <body>
@@ -211,6 +226,7 @@
         <div id="memoryStatus" class="status">Chart Memory: No chart baseline stored in session yet.</div>
     </div>
 
+    <!-- Step 1: Chart & System Selection -->
     <div class="card">
         <h2>1. Chart Data & House Calculation Approach</h2>
         
@@ -237,30 +253,37 @@
         </div>
     </div>
 
+    <!-- Step 2: Initial Analysis Query -->
     <div class="card" id="queryCard" style="opacity: 0.5; pointer-events: none;">
-        <h2>2. Chart Analysis Query</h2>
+        <h2>2. Initial Chart Analysis Query</h2>
         <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
-        <button id="submitBtn" type="button" onclick="processQuery()" disabled>Run Synthesis (Baseline Required)</button>
+        <button id="submitBtn" type="button" onclick="processInitialQuery()" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
+    <!-- Step 3: Analysis Thread & Multi-Turn Follow-Ups -->
     <div class="card" id="resultCard" style="display: none;">
-        <h2>Analysis Approach & Handshake Inspector</h2>
-        <div id="progressInspector" class="progress-inspector">
-            <div id="step1" class="progress-step">Initializing workflow...</div>
-        </div>
+        <h2>Analysis Thread & Live Synthesis</h2>
+        
+        <div id="conversationThread"></div>
+
         <div id="tokenBadge" class="token-badge" style="display:none;">
             <span>📊 <strong>Token Usage:</strong></span>
             <span id="tokenStatsText">Calculating...</span>
         </div>
-        <div id="output"></div>
+
+        <div id="followupContainer" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <label for="followupPrompt" style="color: var(--accent-light); font-weight: 600;">Ask Follow-up Query (Full Context Continuity):</label>
+            <textarea id="followupPrompt" placeholder="Ask clarifications or further details based on previous answers..."></textarea>
+            <button id="followupBtn" type="button" onclick="processFollowupQuery()">Send Follow-up Query</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // Ensure WORKER_URL matches your active worker deployment endpoint
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
     let rawParsedDataText = "";
+    let conversationHistory = []; // Stores complete session turns for context continuity
 
     window.onload = function() {
         console.log("Jyotish Engine Initialized.");
@@ -275,7 +298,6 @@
     };
 
     async function parseChartData() {
-        console.log("parseChartData() triggered!");
         try {
             const chartData = document.getElementById('chartDataInput').value.trim();
             const calcApproach = document.getElementById('calcApproach').value;
@@ -301,20 +323,17 @@
                 matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
                 memoryStatus.textContent = "Processing: Applying Sripati rules with exact Ascendant midpoint...";
                 approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
-Calculate the chart using the classical Sripati house system where the exact Lagna degree serves as the 1st house midpoint, and cusp boundaries span halfway to adjacent midpoints. Detail all 9 planets and Lagna with House, Rasi, Degree, Nakshatra, and Navamsa.`;
+Calculate the chart using the classical Sripati house system where the exact Lagna degree serves as the 1st house midpoint. Detail all 9 planets and Lagna with House, Rasi, Degree, Nakshatra, and Navamsa.`;
             } else {
                 matrixLabel.textContent = "Calculated Equal House Matrix (Ascendant as Midpoint):";
                 memoryStatus.textContent = "Processing: Applying Equal House system taking Lagna degree as midpoint...";
                 approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - EQUAL HOUSE SYSTEM (ASCENDANT AS MIDPOINT)]
-Calculate the house positions by taking the exact Lagna degree as the exact midpoint (bhava madhya) of the 1st house. Each subsequent house spans exactly 30 degrees symmetrically centered on its midpoint (e.g., 2nd house midpoint is Lagna + 30°, 3rd house is Lagna + 60°, etc.). Map all 9 planets into these equal houses based on their exact absolute longitudes relative to house midpoints/boundaries. Detail House, Rasi, Exact Degree, Nakshatra, and Navamsa for all 9 planets and Lagna.`;
+Calculate house positions taking exact Lagna degree as exact midpoint (bhava madhya) of 1st house (30° equal spans). Detail House, Rasi, Degree, Nakshatra, and Navamsa for all 9 planets and Lagna.`;
             }
 
             matrixOutput.textContent = "Connecting to Llama compute engine...";
 
-            const extractionPrompt = `${approachInstruction}
-
-Raw Input Data:
-${chartData}`;
+            const extractionPrompt = `${approachInstruction}\n\nRaw Input Data:\n${chartData}`;
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
@@ -395,13 +414,9 @@ ${chartData}`;
         alert("Baseline successfully locked to session memory!");
     }
 
-    async function processQuery() {
+    async function processInitialQuery() {
         const userPrompt = document.getElementById('prompt').value.trim();
         const submitBtn = document.getElementById('submitBtn');
-        const outputDiv = document.getElementById('output');
-        const resultCard = document.getElementById('resultCard');
-        const tokenBadge = document.getElementById('tokenBadge');
-        const tokenStatsText = document.getElementById('tokenStatsText');
 
         if (!userPrompt) {
             alert("Please provide input query parameters for analysis.");
@@ -409,76 +424,62 @@ ${chartData}`;
         }
 
         submitBtn.disabled = true;
-        submitBtn.textContent = "Synthesizing Analysis Approach...";
-        resultCard.style.display = "block";
-        tokenBadge.style.display = "none";
-        outputDiv.textContent = "";
+        submitBtn.textContent = "Synthesizing Analysis...";
+        
+        conversationHistory = [];
+        document.getElementById('conversationThread').innerHTML = "";
+        document.getElementById('resultCard').style.display = "block";
 
-        try {
-            const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
-            const analysisApproachText = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
-You are an expert Vedic astrologer and scholar. Evaluate the user query using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Conclude with '### Evaluated Reference Materials'.`;
-            
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+        await executeLLmStream(userPrompt);
 
-            const response = await fetch(WORKER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: combinedPrompt })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}): ${errorText}`);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let partialBuffer = "";
-            let fullResponseText = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                partialBuffer += decoder.decode(value, { stream: true });
-                const lines = partialBuffer.split("\n");
-                partialBuffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || trimmed.startsWith(":")) continue;
-
-                    let dataStr = trimmed;
-                    if (dataStr.startsWith("data: ")) {
-                        dataStr = dataStr.replace("data: ", "").trim();
-                    }
-                    if (dataStr === "[DONE]") continue;
-
-                    try {
-                        const json = JSON.parse(dataStr);
-                        const textChunk = json.response || json.text || "";
-                        fullResponseText += textChunk;
-                        outputDiv.textContent += textChunk;
-                    } catch (e) {
-                        outputDiv.textContent += dataStr + "\n";
-                    }
-                }
-            }
-
-            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
-            const outputTokenCount = Math.ceil(fullResponseText.length / 4);
-            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} tokens`;
-            tokenBadge.style.display = "flex";
-
-        } catch (error) {
-            outputDiv.textContent = `Connection Failed: ${error.message}`;
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Run Synthesis";
-        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Re-Run Synthesis";
     }
-</script>
 
-</body>
-</html>
+    async function processFollowupQuery() {
+        const followupPrompt = document.getElementById('followupPrompt').value.trim();
+        const followupBtn = document.getElementById('followupBtn');
+
+        if (!followupPrompt) {
+            alert("Please enter a follow-up question.");
+            return;
+        }
+
+        followupBtn.disabled = true;
+        followupBtn.textContent = "Synthesizing Follow-up...";
+
+        await executeLLmStream(followupPrompt);
+
+        document.getElementById('followupPrompt').value = "";
+        followupBtn.disabled = false;
+        followupBtn.textContent = "Send Follow-up Query";
+    }
+
+    async function executeLLmStream(currentQueryText) {
+        const threadDiv = document.getElementById('conversationThread');
+        const tokenBadge = document.getElementById('tokenBadge');
+        const tokenStatsText = document.getElementById('tokenStatsText');
+
+        // Append User Turn Element to DOM
+        const userTurnDiv = document.createElement('div');
+        userTurnDiv.className = "chat-turn user";
+        userTurnDiv.innerHTML = `<div class="turn-label">User Query</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
+        threadDiv.appendChild(userTurnDiv);
+
+        // Append Assistant Turn Placeholder to DOM
+        const assistantTurnDiv = document.createElement('div');
+        assistantTurnDiv.className = "chat-turn assistant";
+        assistantTurnDiv.innerHTML = `<div class="turn-label">Jyotish Analysis Engine</div><div class="turn-content">Connecting to Llama compute engine...</div>`;
+        threadDiv.appendChild(assistantTurnDiv);
+
+        const contentDiv = assistantTurnDiv.querySelector('.turn-content');
+        contentDiv.textContent = "";
+
+        // Package entire context including chart baseline and full prior turns
+        const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
+        const systemInstruction = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
+You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). You MUST take into account the entire chronological conversation history and previous analysis provided below to maintain full contextual continuity. Conclude with '### Evaluated Reference Materials'.`;
+
+        let chronologicalHistoryText = "";
+        if (conversationHistory.length > 0) {
+            chronologicalHistoryText = "\n\n[FULL CONVERSATION & ANALYSIS HISTORY]\n" + conversationHistory.
