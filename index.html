@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Full Context Threading</title>
+    <title>Vedic Jyotish Analysis Engine - Interactive Correction Flow</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -15,6 +15,7 @@
             --text-muted: #94a3b8;
             --border-color: #26334d;
             --success-color: #10b981;
+            --warning-color: #f59e0b;
         }
 
         body {
@@ -42,10 +43,13 @@
             border-radius: 16px;
             padding: 24px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         h1 {
-            margin: 0 0 8px 0;
+            margin: 0 0 4px 0;
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--text-main);
@@ -55,7 +59,7 @@
         }
 
         h2 {
-            margin: 0 0 14px 0;
+            margin: 0 0 6px 0;
             font-size: 1.15rem;
             font-weight: 600;
             color: var(--accent-light);
@@ -64,8 +68,6 @@
         label {
             font-size: 0.875rem;
             color: var(--text-muted);
-            margin-bottom: 8px;
-            display: block;
             font-weight: 500;
         }
 
@@ -77,7 +79,6 @@
             color: var(--text-main);
             box-sizing: border-box;
             font-size: 0.95rem;
-            margin-bottom: 16px;
             padding: 12px;
             outline: none;
         }
@@ -93,18 +94,18 @@
         }
 
         #chartDataInput {
-            height: 100px;
+            height: 110px;
             resize: vertical;
         }
 
-        #prompt, #followupPrompt {
+        #prompt, #followupPrompt, .feedback-textarea {
             height: 90px;
             resize: vertical;
         }
 
         button {
             position: relative !important;
-            z-index: 10 !important;
+            z-index: 100 !important;
             width: 100%;
             padding: 14px 16px;
             background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
@@ -116,6 +117,7 @@
             font-size: 0.95rem;
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
             pointer-events: auto !important;
+            margin-top: 4px;
         }
 
         button:hover:not(:disabled) {
@@ -131,7 +133,6 @@
 
         .status {
             font-size: 0.85rem;
-            margin-top: 6px;
             padding: 10px 14px;
             border-radius: 8px;
             background: rgba(16, 185, 129, 0.1);
@@ -149,18 +150,20 @@
             font-size: 0.85rem;
             white-space: pre-wrap;
             color: #e2e8f0;
-            margin: 14px 0;
             max-height: 300px;
             overflow-y: auto;
         }
 
         .consent-box {
             display: none;
-            margin-top: 16px;
+            margin-top: 8px;
             padding: 16px;
             background: rgba(16, 185, 129, 0.08);
             border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .chat-turn {
@@ -202,10 +205,42 @@
             line-height: 1.6;
             font-size: 0.95rem;
             color: #e2e8f0;
+            margin-bottom: 12px;
+        }
+
+        .feedback-action-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 12px;
+        }
+
+        .feedback-toggle-btn {
+            background: rgba(245, 158, 11, 0.1) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            color: var(--warning-color) !important;
+            box-shadow: none !important;
+            padding: 8px 12px !important;
+            font-size: 0.85rem !important;
+            width: auto !important;
+        }
+
+        .feedback-toggle-btn:hover {
+            background: rgba(245, 158, 11, 0.2) !important;
+        }
+
+        .feedback-panel {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 8px;
         }
 
         .token-badge {
-            margin-top: 14px;
+            margin-top: 10px;
             padding: 10px 14px;
             background-color: rgba(99, 102, 241, 0.12);
             border: 1px solid rgba(99, 102, 241, 0.3);
@@ -239,17 +274,17 @@
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Capricorn at 1° 22' 06.48", and Mercury is in Virgo at 27° 18' 09.76". Additionally, Jupiter is located in Aquarius at 23° 13' 53.18", Venus is in Libra at 22° 03' 49.92", Saturn is in Scorpio at 12° 33' 11.85", Rahu is in Pisces at 28° 29' 48.34", and Ketu is in Virgo at 28° 29' 48.34".</textarea>
         
-        <button id="parseBtn" type="button" onclick="parseChartData()">1. Calculate Planetary Matrix via Selected Approach</button>
+        <button id="parseBtn" type="button">1. Calculate Planetary Matrix via Selected Approach</button>
 
-        <div id="matrixContainer" style="display:none;">
-            <label id="matrixLabel" style="margin-top: 14px; color: var(--accent-light);">Calculated Matrix:</label>
+        <div id="matrixContainer" style="display:none; flex-direction: column; gap: 8px;">
+            <label id="matrixLabel" style="color: var(--accent-light);">Calculated Matrix:</label>
             <div id="matrixOutput" class="matrix-box"></div>
         </div>
 
-        <div id="consentBox" class="consent-box">
-            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Data</label>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the computed house placements look correct before locking them into memory.</p>
-            <button id="confirmBtn" type="button" onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
+        <div id="consentBox" class="consent-box" style="display:none;">
+            <label style="color: var(--success-color); font-weight:600;">Review Calculated Data</label>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Verify that the computed house placements look correct before locking them into memory.</p>
+            <button id="confirmBtn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
 
@@ -258,7 +293,7 @@
         <h2>2. Initial Chart Analysis Query</h2>
         <label for="prompt">Prompt Input (Synthesizes using 7-Rule framework & confirmed baseline)</label>
         <textarea id="prompt" placeholder="Enter query or specific transit, career, or wealth focus..."></textarea>
-        <button id="submitBtn" type="button" onclick="processInitialQuery()" disabled>Run Synthesis (Baseline Required)</button>
+        <button id="submitBtn" type="button" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
     <!-- Step 3: Analysis Thread & Multi-Turn Follow-Ups -->
@@ -272,10 +307,10 @@
             <span id="tokenStatsText">Calculating...</span>
         </div>
 
-        <div id="followupContainer" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <div id="followupContainer" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; flex-direction: column; gap: 10px;">
             <label for="followupPrompt" style="color: var(--accent-light); font-weight: 600;">Ask Follow-up Query (Full Context Continuity):</label>
             <textarea id="followupPrompt" placeholder="Ask clarifications or further details based on previous answers..."></textarea>
-            <button id="followupBtn" type="button" onclick="processFollowupQuery()">Send Follow-up Query</button>
+            <button id="followupBtn" type="button">Send Follow-up Query</button>
         </div>
     </div>
 </div>
@@ -283,7 +318,7 @@
 <script>
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
     let rawParsedDataText = "";
-    let conversationHistory = []; // Stores complete session turns for context continuity
+    let conversationHistory = [];
 
     window.onload = function() {
         console.log("Jyotish Engine Initialized.");
@@ -295,6 +330,11 @@
             document.getElementById('queryCard').style.pointerEvents = "auto";
             document.getElementById('submitBtn').disabled = false;
         }
+
+        document.getElementById('parseBtn').addEventListener('click', parseChartData);
+        document.getElementById('confirmBtn').addEventListener('click', confirmAndStoreBaseline);
+        document.getElementById('submitBtn').addEventListener('click', processInitialQuery);
+        document.getElementById('followupBtn').addEventListener('click', processFollowupQuery);
     };
 
     async function parseChartData() {
@@ -315,7 +355,7 @@
 
             parseBtn.disabled = true;
             parseBtn.textContent = "Calculating Matrix...";
-            matrixContainer.style.display = "block";
+            matrixContainer.style.display = "flex";
             consentBox.style.display = "none";
 
             let approachInstruction = "";
@@ -384,7 +424,7 @@ Calculate house positions taking exact Lagna degree as exact midpoint (bhava mad
             }
 
             rawParsedDataText = `[Calculation Approach: ${calcApproach.toUpperCase()}]\n` + resultText;
-            consentBox.style.display = "block";
+            consentBox.style.display = "flex";
             memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated matrix above)";
 
         } catch (error) {
@@ -428,7 +468,7 @@ Calculate house positions taking exact Lagna degree as exact midpoint (bhava mad
         
         conversationHistory = [];
         document.getElementById('conversationThread').innerHTML = "";
-        document.getElementById('resultCard').style.display = "block";
+        document.getElementById('resultCard').style.display = "flex";
 
         await executeLLmStream(userPrompt);
 
@@ -455,31 +495,129 @@ Calculate house positions taking exact Lagna degree as exact midpoint (bhava mad
         followupBtn.textContent = "Send Follow-up Query";
     }
 
-    async function executeLLmStream(currentQueryText) {
+    async function executeLLmStream(currentQueryText, isCorrection = false) {
         const threadDiv = document.getElementById('conversationThread');
         const tokenBadge = document.getElementById('tokenBadge');
         const tokenStatsText = document.getElementById('tokenStatsText');
 
-        // Append User Turn Element to DOM
         const userTurnDiv = document.createElement('div');
         userTurnDiv.className = "chat-turn user";
-        userTurnDiv.innerHTML = `<div class="turn-label">User Query</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
+        userTurnDiv.innerHTML = `<div class="turn-label">${isCorrection ? 'Correction / Feedback' : 'User Query'}</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
         threadDiv.appendChild(userTurnDiv);
 
-        // Append Assistant Turn Placeholder to DOM
         const assistantTurnDiv = document.createElement('div');
         assistantTurnDiv.className = "chat-turn assistant";
-        assistantTurnDiv.innerHTML = `<div class="turn-label">Jyotish Analysis Engine</div><div class="turn-content">Connecting to Llama compute engine...</div>`;
+        assistantTurnDiv.innerHTML = `
+            <div class="turn-label">Jyotish Analysis Engine</div>
+            <div class="turn-content">Connecting to Llama compute engine...</div>
+            <div class="feedback-action-bar">
+                <button type="button" class="feedback-toggle-btn" onclick="toggleFeedbackPanel(this)">⚠️ Not Satisfied / Inaccurate?</button>
+            </div>
+            <div class="feedback-panel">
+                <label style="color: var(--warning-color); margin-bottom: 6px; display: block;">Specify Inaccuracy or Correction:</label>
+                <textarea class="feedback-textarea" placeholder="Explain what was inaccurate or what needs adjustment..."></textarea>
+                <button type="button" onclick="submitCorrection(this)" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); margin-top: 8px;">Submit Correction to LLM</button>
+            </div>
+        `;
         threadDiv.appendChild(assistantTurnDiv);
 
         const contentDiv = assistantTurnDiv.querySelector('.turn-content');
         contentDiv.textContent = "";
 
-        // Package entire context including chart baseline and full prior turns
         const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
         const systemInstruction = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
-You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). You MUST take into account the entire chronological conversation history and previous analysis provided below to maintain full contextual continuity. Conclude with '### Evaluated Reference Materials'.`;
+You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Take into account the full chronological conversation history and user corrections to re-align your conclusions. Conclude with '### Evaluated Reference Materials'.`;
 
         let chronologicalHistoryText = "";
         if (conversationHistory.length > 0) {
-            chronologicalHistoryText = "\n\n[FULL CONVERSATION & ANALYSIS HISTORY]\n" + conversationHistory.
+            chronologicalHistoryText = "\n\n[FULL CONVERSATION & ANALYSIS HISTORY]\n" + conversationHistory.map(t => `${t.role.toUpperCase()}:\n${t.text}`).join("\n\n----------------------------------------\n\n");
+        }
+
+        const queryPrefix = isCorrection ? "USER CORRECTION / INACCURACY REPORT" : "CURRENT USER QUERY / FOLLOW-UP";
+        const combinedPrompt = `${systemInstruction}\n\n[CONFIRMED CHART BASELINE]\n${storedChartContext}${chronologicalHistoryText}\n\n[${queryPrefix}]:\n${currentQueryText}`;
+
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: combinedPrompt })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server Error (${response.status}): ${errorText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+            let assistantResponseText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
+
+                    let dataStr = trimmed;
+                    if (dataStr.startsWith("data: ")) {
+                        dataStr = dataStr.replace("data: ", "").trim();
+                    }
+                    if (dataStr === "[DONE]") continue;
+
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const textChunk = json.response || json.text || "";
+                        assistantResponseText += textChunk;
+                        contentDiv.textContent += textChunk;
+                    } catch (e) {
+                        contentDiv.textContent += dataStr + "\n";
+                    }
+                }
+            }
+
+            conversationHistory.push({ role: isCorrection ? "Correction" : "User", text: currentQueryText });
+            conversationHistory.push({ role: "Assistant", text: assistantResponseText });
+
+            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
+            const outputTokenCount = Math.ceil(assistantResponseText.length / 4);
+            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} tokens`;
+            tokenBadge.style.display = "flex";
+
+        } catch (error) {
+            contentDiv.textContent = `Connection Failed: ${error.message}`;
+        }
+    }
+
+    function toggleFeedbackPanel(btn) {
+        const panel = btn.closest('.chat-turn').querySelector('.feedback-panel');
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    }
+
+    async function submitCorrection(btn) {
+        const panel = btn.closest('.feedback-panel');
+        const textarea = panel.querySelector('.feedback-textarea');
+        const correctionText = textarea.value.trim();
+
+        if (!correctionText) {
+            alert("Please specify the inaccuracy or what needs correction.");
+            return;
+        }
+
+        panel.style.display = 'none';
+        await executeLLmStream(`[Inaccuracy Notification / Correction Requested]: ${correctionText}`, true);
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+    }
+</script>
+
+</body>
+</html>
