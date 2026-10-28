@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Interactive Correction Flow</title>
+    <title>Vedic Jyotish Analysis Engine - Iterative Calculation Correction</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -98,7 +98,7 @@
             resize: vertical;
         }
 
-        #prompt, #followupPrompt, .feedback-textarea {
+        #prompt, #followupPrompt, .feedback-textarea, .matrix-feedback-textarea {
             height: 90px;
             resize: vertical;
         }
@@ -161,9 +161,35 @@
             background: rgba(16, 185, 129, 0.08);
             border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 10px;
-            display: flex;
             flex-direction: column;
             gap: 10px;
+        }
+
+        .matrix-feedback-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .matrix-feedback-toggle {
+            background: rgba(245, 158, 11, 0.1) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            color: var(--warning-color) !important;
+            box-shadow: none !important;
+            padding: 8px 12px !important;
+            font-size: 0.85rem !important;
+            width: auto !important;
+        }
+
+        .matrix-feedback-panel {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 8px;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .chat-turn {
@@ -226,10 +252,6 @@
             width: auto !important;
         }
 
-        .feedback-toggle-btn:hover {
-            background: rgba(245, 158, 11, 0.2) !important;
-        }
-
         .feedback-panel {
             display: none;
             margin-top: 10px;
@@ -279,9 +301,19 @@
         <div id="matrixContainer" style="display:none; flex-direction: column; gap: 8px;">
             <label id="matrixLabel" style="color: var(--accent-light);">Calculated Matrix:</label>
             <div id="matrixOutput" class="matrix-box"></div>
+
+            <!-- Calculation Feedback / Correction Bar -->
+            <div class="matrix-feedback-bar">
+                <button type="button" class="matrix-feedback-toggle" onclick="toggleMatrixFeedback(this)">⚠️ House Calculation Wrong? Request Correction</button>
+            </div>
+            <div class="matrix-feedback-panel" id="matrixFeedbackPanel">
+                <label style="color: var(--warning-color);">Specify Calculation Inaccuracy:</label>
+                <textarea class="matrix-feedback-textarea" placeholder="Explain which house calculation is incorrect (e.g., Planet X should be in house Y based on degree boundaries)..."></textarea>
+                <button type="button" id="matrixCorrectionBtn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Send Correction & Recalculate Matrix</button>
+            </div>
         </div>
 
-        <div id="consentBox" class="consent-box" style="display:none;">
+        <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600;">Review Calculated Data</label>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Verify that the computed house placements look correct before locking them into memory.</p>
             <button id="confirmBtn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
@@ -331,13 +363,14 @@
             document.getElementById('submitBtn').disabled = false;
         }
 
-        document.getElementById('parseBtn').addEventListener('click', parseChartData);
+        document.getElementById('parseBtn').addEventListener('click', () => parseChartData(false));
+        document.getElementById('matrixCorrectionBtn').addEventListener('click', () => parseChartData(true));
         document.getElementById('confirmBtn').addEventListener('click', confirmAndStoreBaseline);
         document.getElementById('submitBtn').addEventListener('click', processInitialQuery);
         document.getElementById('followupBtn').addEventListener('click', processFollowupQuery);
     };
 
-    async function parseChartData() {
+    async function parseChartData(isCorrection = false) {
         try {
             const chartData = document.getElementById('chartDataInput').value.trim();
             const calcApproach = document.getElementById('calcApproach').value;
@@ -347,6 +380,7 @@
             const matrixLabel = document.getElementById('matrixLabel');
             const consentBox = document.getElementById('consentBox');
             const parseBtn = document.getElementById('parseBtn');
+            const feedbackTextarea = document.querySelector('.matrix-feedback-textarea');
 
             if (!chartData) {
                 alert("Please provide raw chart baseline text first.");
@@ -354,26 +388,37 @@
             }
 
             parseBtn.disabled = true;
-            parseBtn.textContent = "Calculating Matrix...";
+            parseBtn.textContent = isCorrection ? "Recalculating Matrix with Corrections..." : "Calculating Matrix...";
             matrixContainer.style.display = "flex";
             consentBox.style.display = "none";
+            document.getElementById('matrixFeedbackPanel').style.display = 'none';
 
             let approachInstruction = "";
             if (calcApproach === "sripati") {
                 matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
-                memoryStatus.textContent = "Processing: Applying Sripati rules with exact Ascendant midpoint...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
-Calculate the chart using the classical Sripati house system where the exact Lagna degree serves as the 1st house midpoint. Detail all 9 planets and Lagna with House, Rasi, Degree, Nakshatra, and Navamsa.`;
+                memoryStatus.textContent = "Processing: Applying rigorous Sripati rules with exact Ascendant midpoint...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - RIGOROUS SRIPATI BHAVA CHALIT RULES]
+Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Show arithmetic calculation steps and detail House Placement (Chalit), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets and Lagna.`;
             } else {
                 matrixLabel.textContent = "Calculated Equal House Matrix (Ascendant as Midpoint):";
-                memoryStatus.textContent = "Processing: Applying Equal House system taking Lagna degree as midpoint...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - EQUAL HOUSE SYSTEM (ASCENDANT AS MIDPOINT)]
-Calculate house positions taking exact Lagna degree as exact midpoint (bhava madhya) of 1st house (30° equal spans). Detail House, Rasi, Degree, Nakshatra, and Navamsa for all 9 planets and Lagna.`;
+                memoryStatus.textContent = "Processing: Applying rigorous Equal House formula (Ascendant as Midpoint)...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - RIGOROUS EQUAL HOUSE SYSTEM (ASCENDANT AS MIDPOINT)]
+Calculate house positions using strict Equal House coordinate formula:
+1. House 1 Midpoint = Exact Lagna degree (L). Span = [L - 15°, L + 15°).
+2. House N Midpoint = (L + (N - 1) * 30°) mod 360° with span [Midpoint - 15°, Midpoint + 15°).
+3. Map every planet into absolute longitude P (0° to 360° from 0° Aries) to find its exact house span.
+4. Show arithmetic calculation steps and list for all 9 planets and Lagna: House Number, Rasi Sign, Exact Degree, Nakshatra & Pada, Navamsa Sign.`;
+            }
+
+            let correctionInstruction = "";
+            if (isCorrection && feedbackTextarea.value.trim()) {
+                correctionInstruction = `\n\n[USER CALCULATION CORRECTION / FEEDBACK]:\nThe previous calculation had the following error noted by the user: "${feedbackTextarea.value.trim()}". Re-evaluate and correct the house placement matrix strictly accounting for this feedback.`;
+                feedbackTextarea.value = "";
             }
 
             matrixOutput.textContent = "Connecting to Llama compute engine...";
 
-            const extractionPrompt = `${approachInstruction}\n\nRaw Input Data:\n${chartData}`;
+            const extractionPrompt = `${approachInstruction}${correctionInstruction}\n\nRaw Input Data:\n${chartData}`;
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
@@ -439,6 +484,11 @@ Calculate house positions taking exact Lagna degree as exact midpoint (bhava mad
                 parseBtn.textContent = "1. Calculate Planetary Matrix via Selected Approach";
             }
         }
+    }
+
+    function toggleMatrixFeedback(btn) {
+        const panel = document.getElementById('matrixFeedbackPanel');
+        panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
     }
 
     function confirmAndStoreBaseline() {
