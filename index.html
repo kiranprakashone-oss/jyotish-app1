@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Sripati Bhava Chalit</title>
+    <title>Vedic Jyotish Analysis Engine - Bhava Calculator</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -69,7 +69,7 @@
             font-weight: 500;
         }
 
-        textarea {
+        select, textarea {
             width: 100%;
             background-color: rgba(11, 15, 25, 0.7);
             border: 1px solid var(--border-color);
@@ -77,19 +77,31 @@
             color: var(--text-main);
             box-sizing: border-box;
             font-size: 0.95rem;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             padding: 12px;
-            resize: vertical;
             outline: none;
-            height: 110px;
         }
 
-        textarea:focus {
+        select option {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        select:focus, textarea:focus {
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
 
-        /* Guaranteed Clickability Stack */
+        #chartDataInput {
+            height: 100px;
+            resize: vertical;
+        }
+
+        #prompt {
+            height: 90px;
+            resize: vertical;
+        }
+
         button {
             position: relative !important;
             z-index: 9999 !important;
@@ -200,21 +212,27 @@
     </div>
 
     <div class="card">
-        <h2>1. Chart Data & Bhava Chalit Calculation</h2>
+        <h2>1. Chart Data & House Calculation Approach</h2>
+        
+        <label for="calcApproach">Select House Calculation Approach:</label>
+        <select id="calcApproach">
+            <option value="sripati">Option 1: Sripati Rules (Porphyry / Unequal Bhava Chalit)</option>
+            <option value="equal_midpoint">Option 2: Equal House System (Ascendant Degree as House Midpoint)</option>
+        </select>
+
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
         <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Capricorn at 1° 22' 06.48", and Mercury is in Virgo at 27° 18' 09.76". Additionally, Jupiter is located in Aquarius at 23° 13' 53.18", Venus is in Libra at 22° 03' 49.92", Saturn is in Scorpio at 12° 33' 11.85", Rahu is in Pisces at 28° 29' 48.34", and Ketu is in Virgo at 28° 29' 48.34".</textarea>
         
-        <!-- Button with explicit inline click listener and high z-index -->
-        <button id="parseBtn" type="button" onclick="parseChartData()">1. Calculate Bhava Chalit Matrix via Sripati Rules</button>
+        <button id="parseBtn" type="button" onclick="parseChartData()">1. Calculate Planetary Matrix via Selected Approach</button>
 
         <div id="matrixContainer" style="display:none;">
-            <label style="margin-top: 14px; color: var(--accent-light);">Calculated Bhava Chalit Matrix (Sripati / Porphyry System):</label>
+            <label id="matrixLabel" style="margin-top: 14px; color: var(--accent-light);">Calculated Matrix:</label>
             <div id="matrixOutput" class="matrix-box"></div>
         </div>
 
         <div id="consentBox" class="consent-box">
-            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Bhava Chalit Data</label>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the Bhava Chalit houses computed via the Sripati system look correct before locking them into memory.</p>
+            <label style="color: var(--success-color); font-weight:600; margin-bottom: 8px;">Review Calculated Data</label>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0; margin-bottom:12px;">Verify that the computed house placements look correct before locking them into memory.</p>
             <button id="confirmBtn" type="button" onclick="confirmAndStoreBaseline()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
@@ -240,6 +258,7 @@
 </div>
 
 <script>
+    // Ensure WORKER_URL matches your active worker deployment endpoint
     const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
     let rawParsedDataText = "";
 
@@ -248,7 +267,7 @@
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
-            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed Bhava Chalit baseline loaded)";
+            document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed baseline loaded)";
             document.getElementById('queryCard').style.opacity = "1";
             document.getElementById('queryCard').style.pointerEvents = "auto";
             document.getElementById('submitBtn').disabled = false;
@@ -259,9 +278,11 @@
         console.log("parseChartData() triggered!");
         try {
             const chartData = document.getElementById('chartDataInput').value.trim();
+            const calcApproach = document.getElementById('calcApproach').value;
             const memoryStatus = document.getElementById('memoryStatus');
             const matrixContainer = document.getElementById('matrixContainer');
             const matrixOutput = document.getElementById('matrixOutput');
+            const matrixLabel = document.getElementById('matrixLabel');
             const consentBox = document.getElementById('consentBox');
             const parseBtn = document.getElementById('parseBtn');
 
@@ -271,18 +292,26 @@
             }
 
             parseBtn.disabled = true;
-            parseBtn.textContent = "Calculating Bhava Chalit Matrix via Sripati Rules...";
-            memoryStatus.textContent = "Processing: Applying Sripati (Porphyry) house system with exact Ascendant midpoint...";
+            parseBtn.textContent = "Calculating Matrix...";
             matrixContainer.style.display = "block";
-            matrixOutput.textContent = "Connecting to Llama compute engine...";
             consentBox.style.display = "none";
 
-            const extractionPrompt = `[SYSTEM INSTRUCTION: SRIPATI BHAVA CHALIT PREPARATION RULES]
-You are a precision Vedic Jyotish calculation engine. 
-MANDATORY RULES FOR THIS CALCULATION:
-1. Sripati (Porphyry) House System: Calculate the Bhava Chalit chart using the classical Sripati house system.
-2. Ascendant Midpoint Anchor: The exact degree of the Lagna (Ascendant) provided by the user must serve precisely as the midpoint (Bhava Madhya) of the 1st house. Cusp boundaries span symmetrically halfway to the preceding and succeeding midpoints.
-3. 9-Planet Chalit Placements: Compute and detail the exact Bhava Chalit House placement, Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna, highlighting any shifts between Rasi house and Chalit house.
+            let approachInstruction = "";
+            if (calcApproach === "sripati") {
+                matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
+                memoryStatus.textContent = "Processing: Applying Sripati rules with exact Ascendant midpoint...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
+Calculate the chart using the classical Sripati house system where the exact Lagna degree serves as the 1st house midpoint, and cusp boundaries span halfway to adjacent midpoints. Detail all 9 planets and Lagna with House, Rasi, Degree, Nakshatra, and Navamsa.`;
+            } else {
+                matrixLabel.textContent = "Calculated Equal House Matrix (Ascendant as Midpoint):";
+                memoryStatus.textContent = "Processing: Applying Equal House system taking Lagna degree as midpoint...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - EQUAL HOUSE SYSTEM (ASCENDANT AS MIDPOINT)]
+Calculate the house positions by taking the exact Lagna degree as the exact midpoint (bhava madhya) of the 1st house. Each subsequent house spans exactly 30 degrees symmetrically centered on its midpoint (e.g., 2nd house midpoint is Lagna + 30°, 3rd house is Lagna + 60°, etc.). Map all 9 planets into these equal houses based on their exact absolute longitudes relative to house midpoints/boundaries. Detail House, Rasi, Exact Degree, Nakshatra, and Navamsa for all 9 planets and Lagna.`;
+            }
+
+            matrixOutput.textContent = "Connecting to Llama compute engine...";
+
+            const extractionPrompt = `${approachInstruction}
 
 Raw Input Data:
 ${chartData}`;
@@ -335,9 +364,9 @@ ${chartData}`;
                 }
             }
 
-            rawParsedDataText = resultText;
+            rawParsedDataText = `[Calculation Approach: ${calcApproach.toUpperCase()}]\n` + resultText;
             consentBox.style.display = "block";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated Sripati Bhava Chalit matrix above)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated matrix above)";
 
         } catch (error) {
             console.error("Parse Chart Error:", error);
@@ -348,22 +377,22 @@ ${chartData}`;
             const parseBtn = document.getElementById('parseBtn');
             if (parseBtn) {
                 parseBtn.disabled = false;
-                parseBtn.textContent = "1. Calculate Bhava Chalit Matrix via Sripati Rules";
+                parseBtn.textContent = "1. Calculate Planetary Matrix via Selected Approach";
             }
         }
     }
 
     function confirmAndStoreBaseline() {
-        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX]\n" + rawParsedDataText;
+        const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED MATRIX]\n" + rawParsedDataText;
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
 
-        document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Sripati Bhava Chalit baseline locked in session)";
+        document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Baseline locked in session)";
         document.getElementById('queryCard').style.opacity = "1";
         document.getElementById('queryCard').style.pointerEvents = "auto";
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('consentBox').style.display = "none";
 
-        alert("Sripati Bhava Chalit baseline successfully locked to session memory!");
+        alert("Baseline successfully locked to session memory!");
     }
 
     async function processQuery() {
@@ -388,9 +417,9 @@ ${chartData}`;
         try {
             const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
             const analysisApproachText = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
-You are an expert Vedic astrologer and scholar. Evaluate the user query using the 7-Rule framework (Lagna, Bhava Chalit Sripati, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Conclude with '### Evaluated Reference Materials'.`;
+You are an expert Vedic astrologer and scholar. Evaluate the user query using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Conclude with '### Evaluated Reference Materials'.`;
             
-            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED SRIPATI BHAVA CHALIT MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
+            const combinedPrompt = `${analysisApproachText}\n\n[CONFIRMED MATRIX & CHART BASELINE]\n${storedChartContext}\n\n[USER QUERY / FOCUS]\n${userPrompt}`;
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
