@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Complete Output Generation</title>
+    <title>Vedic Jyotish Analysis Engine - Ascendant-Centred Equal House System</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -218,6 +218,40 @@
             color: var(--text-muted);
         }
 
+        .chat-turn.user .turn-label {
+            color: var(--accent-light);
+        }
+
+        .chat-turn.assistant .turn-label {
+            color: var(--success-color);
+        }
+
+        .turn-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+        }
+
+        .feedback-action-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 12px;
+        }
+
+        .feedback-toggle-btn {
+            background: rgba(245, 158, 11, 0.1) !important;
+            border: 1px solid rgba(245, 158, 11, 0.3) !important;
+            color: var(--warning-color) !important;
+            box-shadow: none !important;
+            padding: 8px 12px !important;
+            font-size: 0.85rem !important;
+            width: auto !important;
+        }
+
         .token-badge {
             margin-top: 10px;
             padding: 10px 14px;
@@ -247,7 +281,7 @@
         <label for="calcApproach">Select House Calculation Approach:</label>
         <select id="calcApproach">
             <option value="sripati">Option 1: Sripati Rules (Porphyry / Unequal Bhava Chalit)</option>
-            <option value="equal_midpoint">Option 2: Equal House System (30° Houses with Lagna as Midpoint)</option>
+            <option value="equal_midpoint" selected>Option 2: Ascendant-Centred Equal House System (Ascendant as Midpoint)</option>
         </select>
 
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
@@ -350,16 +384,26 @@
                 matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
                 memoryStatus.textContent = "Processing Sripati rules...";
                 approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
-Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Output a complete verification table for all 9 planets and Lagna with Chalit House, Rasi, Degree, Nakshatra, and Navamsa. Be concise and complete all outputs without stopping midway.`;
+Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Output a complete verification table for all 9 planets and Lagna with Chalit House, Rasi, Degree, Nakshatra, and Navamsa.`;
             } else {
-                matrixLabel.textContent = "Calculated Equal House Matrix (30° Houses with Lagna as Midpoint):";
-                memoryStatus.textContent = "Processing Equal House verification table...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - CONCISE EQUAL HOUSE VERIFICATION TABLE]
-You are a precision astronomical calculation engine. Compute and publish the house position of EACH planet and Lagna using the exact 30-degree Equal House formula with the Ascendant as the midpoint. 
-To ensure complete output without truncation:
-1. Briefly state House 1 Midpoint (Lagna) and summary boundaries.
-2. Immediately output a clear Markdown Table containing columns: Planet/Lagna, Absolute Longitude (0°-360°), Assigned Equal House (1-12), Rasi Sign & Degree, Nakshatra & Pada.
-3. Ensure the response is concise and completes the entire table for all 9 planets and Lagna without stopping midway.`;
+                matrixLabel.textContent = "Calculated Equal Midpoint Matrix (Ascendant as Midpoint):";
+                memoryStatus.textContent = "Processing Ascendant-Centred Equal House calculation...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - ASCENDANT-CENTRED EQUAL HOUSE SYSTEM (EQUAL MIDPOINT)]
+You are a precision astronomical calculation engine. You MUST calculate house cusps and planetary placements strictly using the Ascendant-Centred Equal House System based on the following rules:
+1. **Ascendant (ASC) as Midpoint**: The exact degree of the Ascendant (Lagna) acts as the exact centre (midpoint) of the 1st House.
+2. **1st House Cusp & Span**: 
+   - 1st House Cusp (starting boundary) = Ascendant Degree - 15° (with proper $360^\circ$ zodiac wrap-around if negative, adding 30° and moving back one zodiac sign).
+   - 1st House Span = from 1st House Cusp to the 2nd House Cusp.
+3. **Remaining House Cusps (2nd to 12th)**: Every subsequent house cusp is found by adding exactly 30° (or exactly one zodiac sign) to the previous house cusp.
+   - House 2 Cusp = 1st Cusp + 30°
+   - House 3 Cusp = 2nd Cusp + 30°
+   - ... up to House 12 Cusp = House 11 Cusp + 30°.
+4. **Planetary Placement Determination**:
+   - Convert all house cusps and planet absolute longitudes into absolute zodiacal longitudes ($0^\circ$ to $360^\circ$, where Aries starts at $0^\circ$).
+   - A planet with absolute longitude $P$ is in House $N$ if: $\text{Cusp}_N \le P < \text{Cusp}_{N+1}$ (handling $360^\circ$ wrap-around for House 12 to House 1 cusp seamlessly).
+5. **Output Requirements**:
+   - List the calculated Cusps for all 12 houses (showing degrees, minutes, and zodiac signs).
+   - Publish a complete verification table for all 9 planets and Lagna showing: Planet, Absolute Longitude ($0^\circ$-$360^\circ$), Assigned House Number, Rasi Sign & Degree, and Nakshatra & Pada. Complete all outputs without stopping midway.`;
             }
 
             let correctionInstruction = "";
@@ -447,7 +491,7 @@ To ensure complete output without truncation:
         const fullBaseline = document.getElementById('chartDataInput').value + "\n\n[CONFIRMED MATRIX]\n" + rawParsedDataText;
         sessionStorage.setItem('JYOTISH_CHART_CONTEXT', fullBaseline);
 
-        document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Baseline locked in session)";
+        document.getElementById('memoryStatus').textContent = "Chart Memory: Active (Confirmed baseline locked in session)";
         document.getElementById('queryCard').style.opacity = "1";
         document.getElementById('queryCard').style.pointerEvents = "auto";
         document.getElementById('submitBtn').disabled = false;
