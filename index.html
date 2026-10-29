@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Precise Equal House Calculator</title>
+    <title>Vedic Jyotish Analysis Engine - Equal House Verification</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -150,7 +150,7 @@
             font-size: 0.85rem;
             white-space: pre-wrap;
             color: #e2e8f0;
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
         }
 
@@ -252,15 +252,6 @@
             width: auto !important;
         }
 
-        .feedback-panel {
-            display: none;
-            margin-top: 10px;
-            padding: 12px;
-            background: rgba(245, 158, 11, 0.05);
-            border: 1px solid rgba(245, 158, 11, 0.2);
-            border-radius: 8px;
-        }
-
         .token-badge {
             margin-top: 10px;
             padding: 10px 14px;
@@ -290,7 +281,7 @@
         <label for="calcApproach">Select House Calculation Approach:</label>
         <select id="calcApproach">
             <option value="sripati">Option 1: Sripati Rules (Porphyry / Unequal Bhava Chalit)</option>
-            <option value="equal_midpoint">Option 2: Equal House System (30-degree Houses with Lagna as Midpoint)</option>
+            <option value="equal_midpoint">Option 2: Equal House System (30° Houses with Lagna as Midpoint)</option>
         </select>
 
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
@@ -397,30 +388,27 @@
                 matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
                 memoryStatus.textContent = "Processing: Applying rigorous Sripati rules with exact Ascendant midpoint...";
                 approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - RIGOROUS SRIPATI BHAVA CHALIT RULES]
-Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Show arithmetic calculation steps and detail House Placement (Chalit), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets and Lagna.`;
+Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Detail House Placement (Chalit), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets and Lagna.`;
             } else {
                 matrixLabel.textContent = "Calculated Equal House Matrix (30° Houses with Lagna as Midpoint):";
-                memoryStatus.textContent = "Processing: Applying strict 30-degree Equal House formula with Lagna as midpoint...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - STRICT EQUAL HOUSE SYSTEM (30-DEGREE HOUSES, LAGNA AS MIDPOINT)]
-You are a precision astronomical calculation engine. You MUST compute house placements using the following exact mathematical algorithm:
-1. Convert the Lagna degree into an absolute zodiacal longitude L in degrees from 0° Aries (0.0° to 360.0°). (Zodiac signs: Aries=0°, Taurus=30°, Gemini=60°, Cancer=90°, Leo=120°, Virgo=150°, Libra=180°, Scorpio=210°, Sagittarius=240°, Capricorn=270°, Aquarius=300°, Pisces=330°).
-2. House 1 Midpoint (Bhava Madhya) = L.
-3. House 1 Span (Bhava Sandhi / Boundaries) = exactly 15° before its midpoint to 15° after its midpoint, i.e., from (L - 15°) mod 360° to (L + 15°) mod 360°.
-4. For each subsequent House N (from 2 to 12):
+                memoryStatus.textContent = "Processing: Computing explicit Equal House verification table for each planet...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - STRICT EQUAL HOUSE VERIFICATION TABLE FOR EACH PLANET]
+You are a precision astronomical calculation engine. You MUST calculate, determine, and publish the house position of EACH planet and Lagna using the exact 30-degree Equal House formula with the Ascendant as the midpoint, structured specifically for user verification:
+1. **Ascendant (Lagna) Anchor**: Convert Lagna into absolute longitude L (0° to 360° from 0° Aries, where Aries=0°, Taurus=30°, ..., Pisces=330°). Set House 1 Midpoint = L.
+2. **12 Equal Houses (30° each)**: For each House N (1 to 12), compute and display:
    - House N Midpoint = (L + (N - 1) * 30°) mod 360°
-   - House N Span = from (House N Midpoint - 15°) mod 360° to (House N Midpoint + 15°) mod 360°
-5. For every planet and Lagna, convert its stated sign and degree into its absolute longitude P (0° to 360° from 0° Aries).
-6. Determine which House N's span contains P. (Note: Handle boundary wrapping correctly across 0°/360°).
-7. Output a structured table or listing showing for each planet and Lagna:
-   - Absolute Longitude (0°-360°)
-   - Assigned Equal House Number (1 to 12)
-   - Rasi Sign & Exact Degree
-   - Nakshatra, Pada, and Navamsa Sign.`;
+   - House N Span Boundaries = from [(House N Midpoint - 15°) mod 360°] to [(House N Midpoint + 15°) mod 360°]
+3. **Planet Calculation & Verification Table**: For EACH of the 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna:
+   - State its given Rasi Sign and Degree.
+   - Convert it into absolute longitude P ($0^\circ$ to $360^\circ$ from 0° Aries).
+   - Determine and publish its assigned Equal House number (1 to 12) based on which house span contains P.
+   - Publish the exact house span boundary range it falls into so the user can verify it.
+4. Present the complete calculation steps and verification table clearly in markdown.`;
             }
 
             let correctionInstruction = "";
             if (isCorrection && feedbackTextarea.value.trim()) {
-                correctionInstruction = `\n\n[USER CALCULATION CORRECTION / FEEDBACK]:\nThe previous calculation had the following error noted by the user: "${feedbackTextarea.value.trim()}". Re-evaluate and correct the house placement matrix strictly following the mathematical algorithm above.`;
+                correctionInstruction = `\n\n[USER CALCULATION CORRECTION / FEEDBACK]:\nThe previous calculation had the following error noted by the user: "${feedbackTextarea.value.trim()}". Re-evaluate and correct the house placement verification table strictly following the mathematical algorithm above.`;
                 feedbackTextarea.value = "";
             }
 
@@ -478,7 +466,7 @@ You are a precision astronomical calculation engine. You MUST compute house plac
 
             rawParsedDataText = `[Calculation Approach: ${calcApproach.toUpperCase()}]\n` + resultText;
             consentBox.style.display = "flex";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated matrix above)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated verification table above)";
 
         } catch (error) {
             console.error("Parse Chart Error:", error);
