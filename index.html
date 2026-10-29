@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Jyotish Analysis Engine - Equal House Verification</title>
+    <title>Vedic Jyotish Analysis Engine - Complete Output Generation</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -218,40 +218,6 @@
             color: var(--text-muted);
         }
 
-        .chat-turn.user .turn-label {
-            color: var(--accent-light);
-        }
-
-        .chat-turn.assistant .turn-label {
-            color: var(--success-color);
-        }
-
-        .turn-content {
-            white-space: pre-wrap;
-            line-height: 1.6;
-            font-size: 0.95rem;
-            color: #e2e8f0;
-            margin-bottom: 12px;
-        }
-
-        .feedback-action-bar {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            border-top: 1px dashed var(--border-color);
-            padding-top: 12px;
-        }
-
-        .feedback-toggle-btn {
-            background: rgba(245, 158, 11, 0.1) !important;
-            border: 1px solid rgba(245, 158, 11, 0.3) !important;
-            color: var(--warning-color) !important;
-            box-shadow: none !important;
-            padding: 8px 12px !important;
-            font-size: 0.85rem !important;
-            width: auto !important;
-        }
-
         .token-badge {
             margin-top: 10px;
             padding: 10px 14px;
@@ -298,14 +264,14 @@
             </div>
             <div class="matrix-feedback-panel" id="matrixFeedbackPanel">
                 <label style="color: var(--warning-color);">Specify Calculation Inaccuracy:</label>
-                <textarea class="matrix-feedback-textarea" placeholder="Explain which house calculation is incorrect (e.g., Planet X should be in house Y based on absolute degrees)..."></textarea>
+                <textarea class="matrix-feedback-textarea" placeholder="Explain which house calculation is incorrect..."></textarea>
                 <button type="button" id="matrixCorrectionBtn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Send Correction & Recalculate Matrix</button>
             </div>
         </div>
 
         <div id="consentBox" class="consent-box">
             <label style="color: var(--success-color); font-weight:600;">Review Calculated Data</label>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Verify that the computed house placements look correct before locking them into memory.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Verify that computed house placements look correct before locking into memory.</p>
             <button id="confirmBtn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Confirm & Lock Baseline to Session Memory</button>
         </div>
     </div>
@@ -318,20 +284,17 @@
         <button id="submitBtn" type="button" disabled>Run Synthesis (Baseline Required)</button>
     </div>
 
-    <!-- Step 3: Analysis Thread & Multi-Turn Follow-Ups -->
+    <!-- Step 3: Analysis Thread -->
     <div class="card" id="resultCard" style="display: none;">
         <h2>Analysis Thread & Live Synthesis</h2>
-        
         <div id="conversationThread"></div>
-
         <div id="tokenBadge" class="token-badge" style="display:none;">
             <span>📊 <strong>Token Usage:</strong></span>
             <span id="tokenStatsText">Calculating...</span>
         </div>
-
         <div id="followupContainer" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; flex-direction: column; gap: 10px;">
-            <label for="followupPrompt" style="color: var(--accent-light); font-weight: 600;">Ask Follow-up Query (Full Context Continuity):</label>
-            <textarea id="followupPrompt" placeholder="Ask clarifications or further details based on previous answers..."></textarea>
+            <label for="followupPrompt" style="color: var(--accent-light); font-weight: 600;">Ask Follow-up Query:</label>
+            <textarea id="followupPrompt" placeholder="Ask clarifications or further details..."></textarea>
             <button id="followupBtn" type="button">Send Follow-up Query</button>
         </div>
     </div>
@@ -343,7 +306,6 @@
     let conversationHistory = [];
 
     window.onload = function() {
-        console.log("Jyotish Engine Initialized.");
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
         if (storedContext) {
             document.getElementById('chartDataInput').value = storedContext;
@@ -378,7 +340,7 @@
             }
 
             parseBtn.disabled = true;
-            parseBtn.textContent = isCorrection ? "Recalculating Matrix with Corrections..." : "Calculating Matrix...";
+            parseBtn.textContent = isCorrection ? "Recalculating Matrix..." : "Calculating Matrix...";
             matrixContainer.style.display = "flex";
             consentBox.style.display = "none";
             document.getElementById('matrixFeedbackPanel').style.display = 'none';
@@ -386,29 +348,23 @@
             let approachInstruction = "";
             if (calcApproach === "sripati") {
                 matrixLabel.textContent = "Calculated Bhava Chalit Matrix (Sripati / Porphyry System):";
-                memoryStatus.textContent = "Processing: Applying rigorous Sripati rules with exact Ascendant midpoint...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - RIGOROUS SRIPATI BHAVA CHALIT RULES]
-Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Detail House Placement (Chalit), Rasi Sign, Exact Degree, Nakshatra & Pada, and Navamsa Sign for all 9 planets and Lagna.`;
+                memoryStatus.textContent = "Processing Sripati rules...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
+Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Output a complete verification table for all 9 planets and Lagna with Chalit House, Rasi, Degree, Nakshatra, and Navamsa. Be concise and complete all outputs without stopping midway.`;
             } else {
                 matrixLabel.textContent = "Calculated Equal House Matrix (30° Houses with Lagna as Midpoint):";
-                memoryStatus.textContent = "Processing: Computing explicit Equal House verification table for each planet...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - STRICT EQUAL HOUSE VERIFICATION TABLE FOR EACH PLANET]
-You are a precision astronomical calculation engine. You MUST calculate, determine, and publish the house position of EACH planet and Lagna using the exact 30-degree Equal House formula with the Ascendant as the midpoint, structured specifically for user verification:
-1. **Ascendant (Lagna) Anchor**: Convert Lagna into absolute longitude L (0° to 360° from 0° Aries, where Aries=0°, Taurus=30°, ..., Pisces=330°). Set House 1 Midpoint = L.
-2. **12 Equal Houses (30° each)**: For each House N (1 to 12), compute and display:
-   - House N Midpoint = (L + (N - 1) * 30°) mod 360°
-   - House N Span Boundaries = from [(House N Midpoint - 15°) mod 360°] to [(House N Midpoint + 15°) mod 360°]
-3. **Planet Calculation & Verification Table**: For EACH of the 9 planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) and Lagna:
-   - State its given Rasi Sign and Degree.
-   - Convert it into absolute longitude P ($0^\circ$ to $360^\circ$ from 0° Aries).
-   - Determine and publish its assigned Equal House number (1 to 12) based on which house span contains P.
-   - Publish the exact house span boundary range it falls into so the user can verify it.
-4. Present the complete calculation steps and verification table clearly in markdown.`;
+                memoryStatus.textContent = "Processing Equal House verification table...";
+                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - CONCISE EQUAL HOUSE VERIFICATION TABLE]
+You are a precision astronomical calculation engine. Compute and publish the house position of EACH planet and Lagna using the exact 30-degree Equal House formula with the Ascendant as the midpoint. 
+To ensure complete output without truncation:
+1. Briefly state House 1 Midpoint (Lagna) and summary boundaries.
+2. Immediately output a clear Markdown Table containing columns: Planet/Lagna, Absolute Longitude (0°-360°), Assigned Equal House (1-12), Rasi Sign & Degree, Nakshatra & Pada.
+3. Ensure the response is concise and completes the entire table for all 9 planets and Lagna without stopping midway.`;
             }
 
             let correctionInstruction = "";
             if (isCorrection && feedbackTextarea.value.trim()) {
-                correctionInstruction = `\n\n[USER CALCULATION CORRECTION / FEEDBACK]:\nThe previous calculation had the following error noted by the user: "${feedbackTextarea.value.trim()}". Re-evaluate and correct the house placement verification table strictly following the mathematical algorithm above.`;
+                correctionInstruction = `\n\n[USER CORRECTION]: "${feedbackTextarea.value.trim()}". Re-calculate completely.`;
                 feedbackTextarea.value = "";
             }
 
@@ -541,46 +497,34 @@ You are a precision astronomical calculation engine. You MUST calculate, determi
         followupBtn.textContent = "Send Follow-up Query";
     }
 
-    async function executeLLmStream(currentQueryText, isCorrection = false) {
+    async function executeLLmStream(currentQueryText) {
         const threadDiv = document.getElementById('conversationThread');
         const tokenBadge = document.getElementById('tokenBadge');
         const tokenStatsText = document.getElementById('tokenStatsText');
 
         const userTurnDiv = document.createElement('div');
         userTurnDiv.className = "chat-turn user";
-        userTurnDiv.innerHTML = `<div class="turn-label">${isCorrection ? 'Correction / Feedback' : 'User Query'}</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
+        userTurnDiv.innerHTML = `<div class="turn-label">User Query</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
         threadDiv.appendChild(userTurnDiv);
 
         const assistantTurnDiv = document.createElement('div');
         assistantTurnDiv.className = "chat-turn assistant";
-        assistantTurnDiv.innerHTML = `
-            <div class="turn-label">Jyotish Analysis Engine</div>
-            <div class="turn-content">Connecting to Llama compute engine...</div>
-            <div class="feedback-action-bar">
-                <button type="button" class="feedback-toggle-btn" onclick="toggleFeedbackPanel(this)">⚠️ Not Satisfied / Inaccurate?</button>
-            </div>
-            <div class="feedback-panel">
-                <label style="color: var(--warning-color); margin-bottom: 6px; display: block;">Specify Inaccuracy or Correction:</label>
-                <textarea class="feedback-textarea" placeholder="Explain what was inaccurate or what needs adjustment..."></textarea>
-                <button type="button" onclick="submitCorrection(this)" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); margin-top: 8px;">Submit Correction to LLM</button>
-            </div>
-        `;
+        assistantTurnDiv.innerHTML = `<div class="turn-label">Jyotish Analysis Engine</div><div class="turn-content">Connecting to Llama compute engine...</div>`;
         threadDiv.appendChild(assistantTurnDiv);
 
         const contentDiv = assistantTurnDiv.querySelector('.turn-content');
         contentDiv.textContent = "";
 
         const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
-        const systemInstruction = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS APPROACH & REFERENCE MAPPING]
-You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rule framework (Lagna, House System & Midpoints, Planetary Placement, Multi-Dasha, Transit, Aspect Geometry, Synthesis). Take into account the full chronological conversation history and user corrections to re-align your conclusions. Conclude with '### Evaluated Reference Materials'.`;
+        const systemInstruction = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS]
+Be concise, structured, and complete your entire analysis without stopping midway. Conclude with '### Evaluated Reference Materials'.`;
 
         let chronologicalHistoryText = "";
         if (conversationHistory.length > 0) {
-            chronologicalHistoryText = "\n\n[FULL CONVERSATION & ANALYSIS HISTORY]\n" + conversationHistory.map(t => `${t.role.toUpperCase()}:\n${t.text}`).join("\n\n----------------------------------------\n\n");
+            chronologicalHistoryText = "\n\n[HISTORY]\n" + conversationHistory.map(t => `${t.role.toUpperCase()}:\n${t.text}`).join("\n\n");
         }
 
-        const queryPrefix = isCorrection ? "USER CORRECTION / INACCURACY REPORT" : "CURRENT USER QUERY / FOLLOW-UP";
-        const combinedPrompt = `${systemInstruction}\n\n[CONFIRMED CHART BASELINE]\n${storedChartContext}${chronologicalHistoryText}\n\n[${queryPrefix}]:\n${currentQueryText}`;
+        const combinedPrompt = `${systemInstruction}\n\n[BASELINE]\n${storedChartContext}${chronologicalHistoryText}\n\n[QUERY]:\n${currentQueryText}`;
 
         try {
             const response = await fetch(WORKER_URL, {
@@ -589,10 +533,7 @@ You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rul
                 body: JSON.stringify({ prompt: combinedPrompt })
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server Error (${response.status}): ${errorText}`);
-            }
+            if (!response.ok) throw new Error(`Server Error (${response.status})`);
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
@@ -612,9 +553,7 @@ You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rul
                     if (!trimmed || trimmed.startsWith(":")) continue;
 
                     let dataStr = trimmed;
-                    if (dataStr.startsWith("data: ")) {
-                        dataStr = dataStr.replace("data: ", "").trim();
-                    }
+                    if (dataStr.startsWith("data: ")) dataStr = dataStr.replace("data: ", "").trim();
                     if (dataStr === "[DONE]") continue;
 
                     try {
@@ -628,7 +567,7 @@ You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rul
                 }
             }
 
-            conversationHistory.push({ role: isCorrection ? "Correction" : "User", text: currentQueryText });
+            conversationHistory.push({ role: "User", text: currentQueryText });
             conversationHistory.push({ role: "Assistant", text: assistantResponseText });
 
             const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
@@ -639,25 +578,6 @@ You are an expert Vedic astrologer and scholar. Evaluate queries using the 7-Rul
         } catch (error) {
             contentDiv.textContent = `Connection Failed: ${error.message}`;
         }
-    }
-
-    function toggleFeedbackPanel(btn) {
-        const panel = btn.closest('.chat-turn').querySelector('.feedback-panel');
-        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
-    }
-
-    async function submitCorrection(btn) {
-        const panel = btn.closest('.feedback-panel');
-        const textarea = panel.querySelector('.feedback-textarea');
-        const correctionText = textarea.value.trim();
-
-        if (!correctionText) {
-            alert("Please specify the inaccuracy or what needs correction.");
-            return;
-        }
-
-        panel.style.display = 'none';
-        await executeLLmStream(`[Inaccuracy Notification / Correction Requested]: ${correctionText}`, true);
     }
 
     function escapeHtml(text) {
