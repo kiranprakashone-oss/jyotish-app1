@@ -285,7 +285,7 @@
         </select>
 
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Capricorn at 1° 22' 06.48", and Mercury is in Virgo at 27° 18' 09.76". Additionally, Jupiter is located in Aquarius at 23° 13' 53.18", Venus is in Libra at 22° 03' 49.92", Saturn is in Scorpio at 12° 33' 11.85", Rahu is in Pisces at 28° 29' 48.34", and Ketu is in Virgo at 28° 29' 48.34".</textarea>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Scorpio Lagna at 8° 14' 00", Sun in Virgo at 11° 15' 07.51", Moon in Gemini at 22° 48' 07.81", Mars in Capricorn at 1° 22' 06.48", Mercury in Virgo at 27° 18' 09.76", Jupiter in Aquarius at 23° 13' 53.18", Venus in Libra at 22° 03' 49.92", Saturn in Scorpio at 12° 33' 11.85", Rahu in Pisces at 28° 29' 48.34", Ketu in Virgo at 28° 29' 48.34".</textarea>
         
         <button id="parseBtn" type="button">1. Calculate Planetary Matrix via Selected Approach</button>
 
@@ -386,24 +386,19 @@
                 approachInstruction = `[SYSTEM INSTRUCTION: OPTION 1 - SRIPATI BHAVA CHALIT RULES]
 Calculate the Bhava Chalit chart using classical Sripati house system. House 1 midpoint = exact Lagna degree. Output a complete verification table for all 9 planets and Lagna with Chalit House, Rasi, Degree, Nakshatra, and Navamsa.`;
             } else {
-                matrixLabel.textContent = "Calculated Equal Midpoint Matrix (Ascendant as Midpoint):";
+                matrixLabel.textContent = "Calculated Ascendant-Centred Equal House Matrix:";
                 memoryStatus.textContent = "Processing Ascendant-Centred Equal House calculation...";
-                approachInstruction = `[SYSTEM INSTRUCTION: OPTION 2 - ASCENDANT-CENTRED EQUAL HOUSE SYSTEM (EQUAL MIDPOINT)]
-You are a precision astronomical calculation engine. You MUST calculate house cusps and planetary placements strictly using the Ascendant-Centred Equal House System based on the following rules:
-1. **Ascendant (ASC) as Midpoint**: The exact degree of the Ascendant (Lagna) acts as the exact centre (midpoint) of the 1st House.
-2. **1st House Cusp & Span**: 
-   - 1st House Cusp (starting boundary) = Ascendant Degree - 15° (with proper $360^\circ$ zodiac wrap-around if negative, adding 30° and moving back one zodiac sign).
-   - 1st House Span = from 1st House Cusp to the 2nd House Cusp.
-3. **Remaining House Cusps (2nd to 12th)**: Every subsequent house cusp is found by adding exactly 30° (or exactly one zodiac sign) to the previous house cusp.
-   - House 2 Cusp = 1st Cusp + 30°
-   - House 3 Cusp = 2nd Cusp + 30°
-   - ... up to House 12 Cusp = House 11 Cusp + 30°.
-4. **Planetary Placement Determination**:
-   - Convert all house cusps and planet absolute longitudes into absolute zodiacal longitudes ($0^\circ$ to $360^\circ$, where Aries starts at $0^\circ$).
-   - A planet with absolute longitude $P$ is in House $N$ if: $\text{Cusp}_N \le P < \text{Cusp}_{N+1}$ (handling $360^\circ$ wrap-around for House 12 to House 1 cusp seamlessly).
-5. **Output Requirements**:
-   - List the calculated Cusps for all 12 houses (showing degrees, minutes, and zodiac signs).
-   - Publish a complete verification table for all 9 planets and Lagna showing: Planet, Absolute Longitude ($0^\circ$-$360^\circ$), Assigned House Number, Rasi Sign & Degree, and Nakshatra & Pada. Complete all outputs without stopping midway.`;
+                approachInstruction = `Act as an advanced astrological calculator. I want you to calculate the house boundaries and subsequent planetary placements using the Equal House System with the Ascendant as the Midpoint (also known as the Ascendant-Centred Equal House System).
+
+Under this specific system, the Ascendant (Lagna) degree does not mark the beginning (cusp) of the 1st house. Instead, it marks the exact center (the 15° mark) of the 1st house. Every house spans exactly 30°. Therefore, the 1st house cusp starts exactly 15° before the Ascendant degree, and every subsequent house starts exactly 30° after the previous one.
+
+Please use the following data to perform the calculations:
+- Lagna and Planets Data provided below in the Raw Input Data.
+
+Step-by-step Instructions for Output:
+1. Calculate the exact start and end degrees (boundaries) for all 12 houses based on the rule (1st house cusp = Lagna - 15°). Present this as a clean markdown table.
+2. Group the planets under their respective calculated houses. If a house has no planets, explicitly mark it as "None".
+3. Keep the output clean, scannable, and direct. Do not include conversational filler or general astrological interpretations.`;
             }
 
             let correctionInstruction = "";
@@ -466,7 +461,7 @@ You are a precision astronomical calculation engine. You MUST calculate house cu
 
             rawParsedDataText = `[Calculation Approach: ${calcApproach.toUpperCase()}]\n` + resultText;
             consentBox.style.display = "flex";
-            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated verification table above)";
+            memoryStatus.textContent = "Chart Memory: Pending User Consent (Review calculated house boundaries and planetary placements above)";
 
         } catch (error) {
             console.error("Parse Chart Error:", error);
