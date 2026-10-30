@@ -230,6 +230,19 @@
             color: #e2e8f0;
             margin-bottom: 12px;
         }
+
+        .token-badge {
+            margin-top: 10px;
+            padding: 10px 14px;
+            background-color: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--accent-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -288,12 +301,23 @@
     <div class="card" id="resultCard" style="display: none;">
         <h2>Analysis Thread & Live Synthesis</h2>
         <div id="conversationThread"></div>
+        <div id="tokenBadge" class="token-badge" style="display:none;">
+            <span>📊 <strong>Token Usage:</strong></span>
+            <span id="tokenStatsText">Calculating...</span>
+        </div>
+        <div id="followupContainer" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <label for="followupPrompt" style="color: var(--accent-light); font-weight: 600;">Ask Follow-up Query:</label>
+            <textarea id="followupPrompt" placeholder="Ask clarifications or further details..."></textarea>
+            <button id="followupBtn" type="button">Send Follow-up Query</button>
+        </div>
     </div>
 </div>
 
 <script>
+    const WORKER_URL = "https://jyotish-app1.kiranprakashone.workers.dev";
     const SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
     let rawParsedDataText = "";
+    let conversationHistory = [];
 
     window.onload = function() {
         const storedContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT');
@@ -307,7 +331,8 @@
 
         document.getElementById('parseBtn').addEventListener('click', calculateLocalMatrix);
         document.getElementById('confirmBtn').addEventListener('click', confirmAndStoreBaseline);
-        document.getElementById('submitBtn').addEventListener('click', runLocalSynthesis);
+        document.getElementById('submitBtn').addEventListener('click', processInitialQuery);
+        document.getElementById('followupBtn').addEventListener('click', processFollowupQuery);
     };
 
     function signToDeg(signName) {
@@ -327,8 +352,6 @@
 
     function parseCoord(text) {
         text = text.trim();
-        
-        // 1. Match Lagna: e.g., "Scorpio Lagna at 8° 14' 00""
         let lagnaMatch = text.match(/^([a-zA-Z]+)\s+Lagna\s+at\s+(\d+)°\s*(\d+)'\s*(\d+)"?/i);
         if (lagnaMatch) {
             let sign = lagnaMatch[1];
@@ -339,7 +362,6 @@
             return { name: "Lagna", absolute, sign, d, m, s };
         }
 
-        // 2. Match Planets: e.g., "Sun in Virgo at 11° 15' 00""
         let planetMatch = text.match(/^([a-zA-Z]+)\s+in\s+([a-zA-Z]+)\s+at\s+(\d+)°\s*(\d+)'\s*(\d+)"?/i);
         if (planetMatch) {
             let name = planetMatch[1];
@@ -350,7 +372,6 @@
             let absolute = signToDeg(sign) + d + m/60 + s/3600;
             return { name, absolute, sign, d, m, s };
         }
-
         return null;
     }
 
@@ -363,14 +384,11 @@
         lines.forEach(line => {
             const parsed = parseCoord(line);
             if (parsed) {
-                if (parsed.name === "Lagna") {
-                    lagnaAbs = parsed.absolute;
-                }
+                if (parsed.name === "Lagna") lagnaAbs = parsed.absolute;
                 planets.push(parsed);
             }
         });
 
-        // Option 2: Ascendant-Centred Equal House System (Midpoint = Lagna, span 30°, 1st house starts Lagna - 15°)
         let cusp1Start = (lagnaAbs - 15 + 360) % 360;
         let houseCusps = [];
         for (let i = 0; i < 12; i++) {
@@ -386,9 +404,8 @@
         let housePlacements = Array.from({length: 12}, () => []);
 
         planets.forEach(p => {
-            // Calculate relative offset from 1st house cusp start
             let relPos = (p.absolute - cusp1Start + 360) % 360;
-            let hIndex = Math.floor(relPos / 30); // 0 to 11
+            let hIndex = Math.floor(relPos / 30);
             housePlacements[hIndex].push(`${p.name} (${degToDMS(p.absolute)})`);
         });
 
@@ -422,20 +439,133 @@
         alert("Baseline successfully locked to session memory!");
     }
 
-    function runLocalSynthesis() {
-        const query = document.getElementById('prompt').value;
-        const thread = document.getElementById('conversationThread');
-        document.getElementById('resultCard').style.display = 'flex';
+    async function processInitialQuery() {
+        const userPrompt = document.getElementById('prompt').value.trim();
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (!userPrompt) {
+            alert("Please provide input query parameters for analysis.");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Synthesizing Analysis...";
         
-        thread.innerHTML = `
-            <div class="chat-turn user"><div class="turn-label">User Query</div><div class="turn-content">${query}</div></div>
-            <div class="chat-turn assistant"><div class="turn-label">Local Engine Synthesis</div><div class="turn-content">
-Chart baseline successfully verified using the Ascendant-Centred Equal House mathematical framework. 
-- Lagna is centered at 15° of the 1st house.
-- All planetary longitudes mapped deterministically against uniform 30° house boundaries.
-- Ready for transit, career, and wealth timing analysis based on confirmed coordinates.
-            </div></div>
-        `;
+        conversationHistory = [];
+        document.getElementById('conversationThread').innerHTML = "";
+        document.getElementById('resultCard').style.display = "flex";
+
+        await executeLLmStream(userPrompt);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Re-Run Synthesis";
+    }
+
+    async function processFollowupQuery() {
+        const followupPrompt = document.getElementById('followupPrompt').value.trim();
+        const followupBtn = document.getElementById('followupBtn');
+
+        if (!followupPrompt) {
+            alert("Please enter a follow-up question.");
+            return;
+        }
+
+        followupBtn.disabled = true;
+        followupBtn.textContent = "Synthesizing Follow-up...";
+
+        await executeLLmStream(followupPrompt);
+
+        document.getElementById('followupPrompt').value = "";
+        followupBtn.disabled = false;
+        followupBtn.textContent = "Send Follow-up Query";
+    }
+
+    async function executeLLmStream(currentQueryText) {
+        const threadDiv = document.getElementById('conversationThread');
+        const tokenBadge = document.getElementById('tokenBadge');
+        const tokenStatsText = document.getElementById('tokenStatsText');
+
+        const userTurnDiv = document.createElement('div');
+        userTurnDiv.className = "chat-turn user";
+        userTurnDiv.innerHTML = `<div class="turn-label">User Query</div><div class="turn-content">${escapeHtml(currentQueryText)}</div>`;
+        threadDiv.appendChild(userTurnDiv);
+
+        const assistantTurnDiv = document.createElement('div');
+        assistantTurnDiv.className = "chat-turn assistant";
+        assistantTurnDiv.innerHTML = `<div class="turn-label">Jyotish Analysis Engine</div><div class="turn-content">Connecting to Llama compute engine...</div>`;
+        threadDiv.appendChild(assistantTurnDiv);
+
+        const contentDiv = assistantTurnDiv.querySelector('.turn-content');
+        contentDiv.textContent = "";
+
+        const storedChartContext = sessionStorage.getItem('JYOTISH_CHART_CONTEXT') || "No prior chart baseline entered.";
+        const systemInstruction = `[SYSTEM INSTRUCTION: VEDIC JYOTISH ANALYSIS]
+Be concise, structured, and complete your entire analysis without stopping midway. Conclude with '### Evaluated Reference Materials'.`;
+
+        let chronologicalHistoryText = "";
+        if (conversationHistory.length > 0) {
+            chronologicalHistoryText = "\n\n[HISTORY]\n" + conversationHistory.map(t => `${t.role.toUpperCase()}:\n${t.text}`).join("\n\n");
+        }
+
+        const combinedPrompt = `${systemInstruction}\n\n[BASELINE]\n${storedChartContext}${chronologicalHistoryText}\n\n[QUERY]:\n${currentQueryText}`;
+
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: combinedPrompt })
+            });
+
+            if (!response.ok) throw new Error(`Server Error (${response.status})`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let partialBuffer = "";
+            let assistantResponseText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                partialBuffer += decoder.decode(value, { stream: true });
+                const lines = partialBuffer.split("\n");
+                partialBuffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
+
+                    let dataStr = trimmed;
+                    if (dataStr.startsWith("data: ")) dataStr = dataStr.replace("data: ", "").trim();
+                    if (dataStr === "[DONE]") continue;
+
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const textChunk = json.response || json.text || "";
+                        assistantResponseText += textChunk;
+                        contentDiv.textContent += textChunk;
+                    } catch (e) {
+                        contentDiv.textContent += dataStr + "\n";
+                    }
+                }
+            }
+
+            conversationHistory.push({ role: "User", text: currentQueryText });
+            conversationHistory.push({ role: "Assistant", text: assistantResponseText });
+
+            const inputTokenCount = Math.ceil(combinedPrompt.length / 4);
+            const outputTokenCount = Math.ceil(assistantResponseText.length / 4);
+            tokenStatsText.textContent = `Input: ~${inputTokenCount} | Output: ~${outputTokenCount} tokens`;
+            tokenBadge.style.display = "flex";
+
+        } catch (error) {
+            contentDiv.textContent = `Connection Failed: ${error.message}`;
+        }
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
     }
 </script>
 
