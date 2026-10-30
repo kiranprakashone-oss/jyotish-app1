@@ -234,24 +234,6 @@
             margin-bottom: 12px;
         }
 
-        .feedback-action-bar {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            border-top: 1px dashed var(--border-color);
-            padding-top: 12px;
-        }
-
-        .feedback-toggle-btn {
-            background: rgba(245, 158, 11, 0.1) !important;
-            border: 1px solid rgba(245, 158, 11, 0.3) !important;
-            color: var(--warning-color) !important;
-            box-shadow: none !important;
-            padding: 8px 12px !important;
-            font-size: 0.85rem !important;
-            width: auto !important;
-        }
-
         .token-badge {
             margin-top: 10px;
             padding: 10px 14px;
@@ -335,6 +317,7 @@
 </div>
 
 <script>
+    // Note: WORKER_URL has NO trailing slash to prevent POST-to-GET redirect 405 errors
     const WORKER_URL = "https://jyotish-app1.kiranprakashone.workers.dev";
     let rawParsedDataText = "";
     let conversationHistory = [];
@@ -410,6 +393,7 @@ CRITICAL MATHEMATICAL RULES FOR OUTPUT FORMAT:
 
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
+                mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: extractionPrompt })
             });
@@ -565,6 +549,7 @@ Be concise, structured, and complete your entire analysis without stopping midwa
         try {
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
+                mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: combinedPrompt })
             });
