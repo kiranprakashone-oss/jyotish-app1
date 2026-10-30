@@ -285,7 +285,7 @@
         </select>
 
         <label for="chartDataInput">Enter Raw Chart Baseline (Lagna Degrees, Planet Degrees, Nakshatras, Rasis):</label>
-        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Scorpio Lagna at 8° 14' 00", Sun in Virgo at 11° 15' 07.51", Moon in Gemini at 22° 48' 07.81", Mars in Capricorn at 1° 22' 06.48", Mercury in Virgo at 27° 18' 09.76", Jupiter in Aquarius at 23° 13' 53.18", Venus in Libra at 22° 03' 49.92", Saturn in Scorpio at 12° 33' 11.85", Rahu in Pisces at 28° 29' 48.34", Ketu in Virgo at 28° 29' 48.34".</textarea>
+        <textarea id="chartDataInput" placeholder="Example: Scorpio Lagna 8°14' (Anuradha Pada 2)...">Scorpio Lagna at 8° 14' 00", Sun in Virgo at 11° 15' 00", Moon in Gemini at 22° 48' 00", Mars in Capricorn at 1° 22' 00", Mercury in Virgo at 27° 18' 00", Jupiter in Aquarius at 23° 13' 00", Venus in Libra at 22° 03' 00", Saturn in Scorpio at 12° 33' 00", Rahu in Pisces at 28° 29' 00", Ketu in Virgo at 28° 29' 00"</textarea>
         
         <button id="parseBtn" type="button">1. Calculate Planetary Matrix via Selected Approach</button>
 
@@ -335,7 +335,7 @@
 </div>
 
 <script>
-    const WORKER_URL = "https://jyotish-api-gateway.kiranprakashone.workers.dev";
+    const WORKER_URL = "https://jyotish-app1.kiranprakashone.workers.dev";
     let rawParsedDataText = "";
     let conversationHistory = [];
 
@@ -388,22 +388,19 @@ Calculate the Bhava Chalit chart using classical Sripati house system. House 1 m
             } else {
                 matrixLabel.textContent = "Calculated Ascendant-Centred Equal House Matrix:";
                 memoryStatus.textContent = "Processing Ascendant-Centred Equal House calculation...";
-                approachInstruction = `Act as an advanced astrological calculator. I want you to calculate the house boundaries and subsequent planetary placements using the Equal House System with the Ascendant as the Midpoint (also known as the Ascendant-Centred Equal House System).
+                approachInstruction = `Act as an advanced astrological calculator. Calculate the house boundaries and subsequent planetary placements using the Equal House System with the Ascendant as the Midpoint (also known as the Ascendant-Centred Equal House System).
 
-Under this specific system, the Ascendant (Lagna) degree does not mark the beginning (cusp) of the 1st house. Instead, it marks the exact center (the 15° mark) of the 1st house. Every house spans exactly 30°. Therefore, the 1st house cusp starts exactly 15° before the Ascendant degree, and every subsequent house starts exactly 30° after the previous one.
-
-Please use the following data to perform the calculations:
-- Lagna and Planets Data provided below in the Raw Input Data.
-
-Step-by-step Instructions for Output:
-1. Calculate the exact start and end degrees (boundaries) for all 12 houses based on the rule (1st house cusp = Lagna - 15°). Present this as a clean markdown table.
-2. Group the planets under their respective calculated houses. If a house has no planets, explicitly mark it as "None".
-3. Keep the output clean, scannable, and direct. Do not include conversational filler or general astrological interpretations.`;
+CRITICAL MATHEMATICAL RULES FOR OUTPUT FORMAT:
+1. Every zodiac sign has strictly 30 degrees (0° to 29° 59'). NEVER output degrees greater than 30° next to a sign name (e.g., 38° Sagittarius is mathematically invalid; it must be converted to proper sign and degree).
+2. Under this specific system, the Ascendant (Lagna) degree marks the exact center (the 15° mark) of the 1st house. Every house spans exactly 30°. Therefore, the 1st house cusp starts exactly 15° before the Ascendant degree.
+3. Subsequent House Cusps (2 to 12) = Previous Cusp + 30°. Whenever degrees exceed 30°, roll over into the next zodiac sign sequentially (Aries -> Taurus -> Gemini -> Cancer -> Leo -> Virgo -> Libra -> Scorpio -> Sagittarius -> Capricorn -> Aquarius -> Pisces -> Aries).
+4. Present the exact start and end degrees (boundaries) for all 12 houses in a clean markdown table showing the exact sign and valid degree (0°-29° 59') for each cusp.
+5. Group the planets under their respective calculated houses. If a house has no planets, explicitly mark it as "None". Keep it clean, direct, and free of conversational filler.`;
             }
 
             let correctionInstruction = "";
             if (isCorrection && feedbackTextarea.value.trim()) {
-                correctionInstruction = `\n\n[USER CORRECTION]: "${feedbackTextarea.value.trim()}". Re-calculate completely.`;
+                correctionInstruction = `\n\n[USER CORRECTION]: "${feedbackTextarea.value.trim()}". Re-calculate completely adhering to strict 0°-30° sign limits.`;
                 feedbackTextarea.value = "";
             }
 
