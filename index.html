@@ -260,7 +260,7 @@
             <div id="matrixOutput" class="matrix-box"></div>
 
             <div class="matrix-feedback-bar">
-                <button type="button" class="matrix-feedback-toggle" onclick="toggleMatrixFeedback(this)">⚠️ House Calculation Wrong? Request Correction</button>
+                <button type="button" class="matrix-feedback-toggle" onclick="toggleMatrixFeedback()">⚠️ House Calculation Wrong? Request Correction</button>
             </div>
             <div class="matrix-feedback-panel" id="matrixFeedbackPanel">
                 <label style="color: var(--warning-color);">Specify Calculation Inaccuracy:</label>
@@ -311,7 +311,7 @@
     };
 
     function signToDeg(signName) {
-        const idx = SIGNS.findIndex(s => s.toLowerCase() === signName.toLowerCase());
+        const idx = SIGNS.findIndex(s => s.toLowerCase() === signName.trim().toLowerCase());
         return idx !== -1 ? idx * 30 : 0;
     }
 
@@ -326,20 +326,32 @@
     }
 
     function parseCoord(text) {
-        // e.g. "Scorpio Lagna at 8° 14' 00"" or "Sun in Virgo at 11° 15' 00""
-        const match = text.match(/([a-zA-Z]+)\s+(?:Lagna|in\s+[a-zA-Z]+)\s+at\s+(\d+)°\s*(\d+)'\s*(\d+)"/i);
-        if (!match) return null;
-        let sign = match[1].toLowerCase() === 'lagna' ? text.split(" ")[0] : match[1];
-        // handle cases where format is "Scorpio Lagna at 8° 14' 00""
-        if (text.includes("Lagna")) {
-            const parts = text.split("Lagna");
-            sign = parts[0].trim();
+        text = text.trim();
+        
+        // 1. Match Lagna: e.g., "Scorpio Lagna at 8° 14' 00""
+        let lagnaMatch = text.match(/^([a-zA-Z]+)\s+Lagna\s+at\s+(\d+)°\s*(\d+)'\s*(\d+)"?/i);
+        if (lagnaMatch) {
+            let sign = lagnaMatch[1];
+            let d = parseInt(lagnaMatch[2]);
+            let m = parseInt(lagnaMatch[3]);
+            let s = parseInt(lagnaMatch[4]);
+            let absolute = signToDeg(sign) + d + m/60 + s/3600;
+            return { name: "Lagna", absolute, sign, d, m, s };
         }
-        const d = parseInt(match[2]);
-        const m = parseInt(match[3]);
-        const s = parseInt(match[4]);
-        const absolute = signToDeg(sign) + d + m/60 + s/3600;
-        return { name: text.split(" at ")[0].trim(), absolute, sign, d, m, s };
+
+        // 2. Match Planets: e.g., "Sun in Virgo at 11° 15' 00""
+        let planetMatch = text.match(/^([a-zA-Z]+)\s+in\s+([a-zA-Z]+)\s+at\s+(\d+)°\s*(\d+)'\s*(\d+)"?/i);
+        if (planetMatch) {
+            let name = planetMatch[1];
+            let sign = planetMatch[2];
+            let d = parseInt(planetMatch[3]);
+            let m = parseInt(planetMatch[4]);
+            let s = parseInt(planetMatch[5]);
+            let absolute = signToDeg(sign) + d + m/60 + s/3600;
+            return { name, absolute, sign, d, m, s };
+        }
+
+        return null;
     }
 
     function calculateLocalMatrix() {
@@ -351,7 +363,7 @@
         lines.forEach(line => {
             const parsed = parseCoord(line);
             if (parsed) {
-                if (line.toLowerCase().includes("lagna")) {
+                if (parsed.name === "Lagna") {
                     lagnaAbs = parsed.absolute;
                 }
                 planets.push(parsed);
@@ -366,7 +378,7 @@
         }
 
         let outputText = "### Ascendant-Centred Equal House Verification Matrix\n\n";
-        outputText += `**Lagna (Ascendant) Absolute:** ${degToDMS(lagnaAbs)} (${lagnaAbs.toFixed(4)}°)\n`;
+        outputText += `**Lagna (Ascendant):** ${degToDMS(lagnaAbs)} (Absolute: ${lagnaAbs.toFixed(4)}°)\n`;
         outputText += `**1st House Cusp Start:** ${degToDMS(cusp1Start)}\n\n`;
         outputText += "| House | Start Boundary | End Boundary | Assigned Planets / Bodies |\n";
         outputText += "|---|---|---|---|\n";
@@ -374,7 +386,7 @@
         let housePlacements = Array.from({length: 12}, () => []);
 
         planets.forEach(p => {
-            // Find house
+            // Calculate relative offset from 1st house cusp start
             let relPos = (p.absolute - cusp1Start + 360) % 360;
             let hIndex = Math.floor(relPos / 30); // 0 to 11
             housePlacements[hIndex].push(`${p.name} (${degToDMS(p.absolute)})`);
